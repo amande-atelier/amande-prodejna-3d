@@ -1,0 +1,610 @@
+
+  b.innerHTML=`<span class="ic">${def.ic}</span><span class="nm">${def.nazev}</span><span class="sub">${def.resize?'šířka nastavitelná':def.len.toFixed(1)+' m'}</span>`;
+  b.onclick=()=>zacniWallPrvek(id);
+  wkatEl.appendChild(b);
+});
+
+/* --- podlahové swatche --- */
+const matEl=$('matswatch');
+MATY.forEach(m=>{
+  const s=document.createElement('div'); s.className='swatch'; s.style.background=m.css; s.dataset.m=m.id;
+  s.innerHTML=`<span>${m.nazev}</span>`;
+  s.onclick=()=>zacniMalovani(m.id);
+  matEl.appendChild(s);
+});
+document.querySelectorAll('#tab-pod [data-pre]').forEach(b=>b.onclick=()=>{
+  PRESETY[b.dataset.pre](); redrawFloor(); uloz(); tipuj('Podlaha přepnuta: '+b.textContent.trim());
+  setTimeout(()=>tipuj(null),1800);
+});
+$('paintStop').onclick=()=>zrusRezimy();
+
+/* --- track UI --- */
+function ulozTrackUI(){
+  const el=$('tracklist'); el.innerHTML='';
+  stav.tracks.forEach((t,i)=>{
+    const osy=trOsy(t);
+    const r=document.createElement('div'); r.className='trbox';
+    r.innerHTML=`<div class="trhead">Track ${i+1} · <span class="tlen">${(t.do-t.od).toFixed(1)} m</span><span class="sp"></span>
+        <button class="ori${t.ori!=='X'?' on':''}" data-o="Z" title="podélně (po hloubce prodejny)">⬍ podél</button>
+        <button class="ori${t.ori==='X'?' on':''}" data-o="X" title="příčně (po šířce prodejny)">⬌ příčně</button>
+        <button class="x" title="odebrat track">✕</button></div>
+      <div class="trl"><label>${osy.aNazev}</label><input data-k="a" type="range" min="${osy.aMin}" max="${osy.aMax}" step="0.1" value="${t.a}"><span class="val">${t.a.toFixed(1)} m</span></div>
+      <div class="trl"><label>od</label><input data-k="od" type="range" min="${osy.sMin}" max="${osy.sMax}" step="0.1" value="${t.od}"><span class="val">${t.od.toFixed(1)} m</span></div>
+      <div class="trl"><label>do</label><input data-k="do" type="range" min="${osy.sMin}" max="${osy.sMax}" step="0.1" value="${t.do}"><span class="val">${t.do.toFixed(1)} m</span></div>`;
+    r.querySelectorAll('input').forEach(rng=>{
+      const val=rng.parentElement.querySelector('.val');
+      rng.oninput=()=>{ let v=+rng.value;
+        if(rng.dataset.k==='od'){ v=Math.min(v,t.do-TR_DMIN); rng.value=v; }
+        if(rng.dataset.k==='do'){ v=Math.max(v,t.od+TR_DMIN); rng.value=v; }
+        t[rng.dataset.k]=v; val.textContent=v.toFixed(1)+' m';
+        r.querySelector('.tlen').textContent=(t.do-t.od).toFixed(1)+' m';
+        rebuildTrackMeshes();
+        liveSv.forEach(s=>{ if(s.data.tr===i){ clampSvNaTrack(s.data); aktualizujSvitidlo(s); } });
+        if(fsel&&fsel.data.tr===i) aimMarker.position.set(fsel.data.tx,0.02,fsel.data.tz);
+        uloz(); };
+    });
+    r.querySelectorAll('.ori').forEach(b=>b.onclick=()=>{
+      if(t.ori===b.dataset.o) return;
+      const L=t.do-t.od, stredS=(t.od+t.do)/2, staraA=t.a;
+      t.ori=b.dataset.o;
+      const n=trOsy(t);
+      t.a=Math.max(n.aMin,Math.min(n.aMax,stredS));
+      let od=staraA-L/2, doo=staraA+L/2;
+      if(doo-od>n.sMax-n.sMin){ od=n.sMin; doo=n.sMax; }
+      if(od<n.sMin){ doo+=n.sMin-od; od=n.sMin; }
+      if(doo>n.sMax){ od-=doo-n.sMax; doo=n.sMax; od=Math.max(n.sMin,od); }
+      t.od=+od.toFixed(1); t.do=+doo.toFixed(1);
+      stav.svetla.forEach(f=>{ if(f.tr===i) clampSvNaTrack(f); });
+      rebuildTracks(); rebuildSvetla(); vyberSvitidlo(null); uloz(); });
+    r.querySelector('.x').onclick=()=>{
+      if(stav.tracks.length<=1){ tipuj('Musí zůstat aspoň jeden track'); setTimeout(()=>tipuj(null),1500); return; }
+      stav.tracks.splice(i,1);
+      stav.svetla=stav.svetla.filter(f=>f.tr!==i);
+      stav.svetla.forEach(f=>{ if(f.tr>i) f.tr--; });
+      rebuildTracks(); rebuildSvetla(); vyberSvitidlo(null); uloz(); };
+    el.appendChild(r);
+  });
+}
+$('trAdd').onclick=()=>{ if(stav.tracks.length>=8){ tipuj('Max 8 tracků'); setTimeout(()=>tipuj(null),1500); return; }
+  stav.tracks.push({ori:'Z',a:4.2,od:1.2,do:14.4}); rebuildTracks(); uloz(); };
+
+/* --- globální světla --- */
+function syncGlob(){
+  $('denni').value=stav.denni*100; $('denniv').textContent=Math.round(stav.denni*100)+' %';
+  $('gmult').value=stav.gmult*100; $('gmultv').textContent=Math.round(stav.gmult*100)+' %';
+}
+$('denni').oninput=e=>{ stav.denni=e.target.value/100; aplikujDenni(); syncGlob(); uloz(); };
+$('gmult').oninput=e=>{ stav.gmult=e.target.value/100; liveSv.forEach(aktualizujSvitidlo); syncGlob(); uloz(); };
+function aplikujDenni(){
+  const c=stav.cine;
+  sun.intensity=1.45*stav.denni*(c?0.35:1);   // černý strop pohltí část světla, ale není noc
+  hemi.intensity=0.5*stav.denni*(c?0.45:1);
+}
+$('svAuto').onclick=()=>{
+  stav.svetla=[];
+  stav.tracks.forEach((t,tr)=>{ const oriX=t.ori==='X';
+    for(let s=t.od+0.8; s<=t.do-0.6; s+=2.0){
+      let tx,tz;
+      if(oriX){ tz = t.a<CZ ? Math.max(0.4,t.a-1.5) : Math.min(ROOM.hloubka-0.4,t.a+1.5); tx=+Math.min(ROOM.celo-0.4,s+0.25).toFixed(2); }
+      else    { tx = t.a<CX ? Math.max(0.4,t.a-1.5) : Math.min(ROOM.celo-0.4,t.a+1.5); tz=+Math.min(ROOM.hloubka-0.4,s+0.25).toFixed(2); }
+      stav.svetla.push({t:'spot',tr,s:+s.toFixed(2),tx,tz,k:3000,dim:0.85}); } });
+  rebuildSvetla(); vyberSvitidlo(null); uloz();
+};
+$('svClear').onclick=()=>{ stav.svetla=[]; rebuildSvetla(); vyberSvitidlo(null); uloz(); };
+
+/* --- moje návrhy (pojmenovaná uložení) --- */
+const NKLIC='amande3d_navrhy';
+function nactiNavrhy(){ try{ const a=JSON.parse(localStorage.getItem(NKLIC)); return Array.isArray(a)?a:[]; }catch(_){ return []; } }
+function renderNavrhy(){
+  const el=$('navList'); el.innerHTML='';
+  const arr=nactiNavrhy();
+  if(!arr.length){ el.innerHTML='<div class="note">Zatím žádné uložené návrhy. Pojmenuj aktuální stav a ulož ho.</div>'; return; }
+  arr.forEach((n,i)=>{
+    const r=document.createElement('div'); r.className='navrow';
+    const d=new Date(n.d);
+    r.innerHTML=`<span class="nn" title="${n.n}">${n.n}</span>
+      <span class="nd">${d.getDate()}.${d.getMonth()+1}. ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}</span>
+      <button class="ld">↺</button><button class="del">✕</button>`;
+    r.querySelector('.ld').title='načíst návrh';
+    r.querySelector('.ld').onclick=()=>{
+      if(aplikuj(n.data)){ obnovVse(); uloz(true); tipuj(`Návrh „${n.n}" načten ✓`); setTimeout(()=>tipuj(null),1600); } };
+    r.querySelector('.del').title='smazat návrh';
+    r.querySelector('.del').onclick=()=>{
+      if(!confirm(`Smazat návrh „${n.n}"?`)) return;
+      const a=nactiNavrhy(); a.splice(i,1); localStorage.setItem(NKLIC,JSON.stringify(a)); renderNavrhy(); };
+    el.appendChild(r);
+  });
+}
+$('navSave').onclick=()=>{
+  let n=$('navName').value.trim();
+  if(!n){ const d=new Date(); n=`návrh ${d.getDate()}.${d.getMonth()+1}. ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+  const a=nactiNavrhy(); const ex=a.findIndex(x=>x.n===n);
+  const rec={ n, d:Date.now(), data:serializuj() };
+  if(ex>=0){ if(!confirm(`Návrh „${n}" už existuje — přepsat?`)) return; a[ex]=rec; } else a.push(rec);
+  try{ localStorage.setItem(NKLIC,JSON.stringify(a)); }
+  catch(err){ tipuj('Úložiště prohlížeče je plné — smaž starší návrhy'); setTimeout(()=>tipuj(null),2200); return; }
+  $('navName').value=''; renderNavrhy();
+  tipuj(`Uloženo: „${n}" ✓`); setTimeout(()=>tipuj(null),1500);
+};
+
+/* --- soubor --- */
+$('expJson').onclick=()=>{
+  const blob=new Blob([serializuj()],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='amande-prodejna-layout.json'; a.click(); URL.revokeObjectURL(a.href);
+};
+$('impJson').onclick=()=>$('impFile').click();
+$('impFile').onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ if(aplikuj(r.result)){ obnovVse(); uloz(true); tipuj('Import hotov ✓'); setTimeout(()=>tipuj(null),1500); }
+                 else { tipuj('Soubor se nepodařilo načíst'); setTimeout(()=>tipuj(null),2000); } };
+  r.readAsText(f); e.target.value='';
+};
+$('resetAll').onclick=()=>{
+  if(!confirm('Opravdu obnovit výchozí stav? Aktuální rozvržení se přepíše.')) return;
+  vychoziStav(); obnovVse(); uloz(true);
+};
+function aktualizujStats(){
+  $('stats').innerHTML=`objekty: <b>${stav.objekty.length}</b> · svítidla: <b>${stav.svetla.length}</b> · tracky: <b>${stav.tracks.length}</b>`;
+}
+
+/* ===================================================================
+   INTERAKCE — raycast, umisťování, výběr, drag, malování, míření
+   =================================================================== */
+const ray=new THREE.Raycaster(); const ndc=new THREE.Vector2();
+const rovina=new THREE.Plane(new THREE.Vector3(0,1,0),0);
+let ghost=null, ghostTyp=null;        // umisťování objektu
+let svGhost=null, svTyp=null;         // umisťování svítidla
+let wGhost=null, wTyp=null;           // umisťování prvku na stěnu
+let paintMat=-1, painting=false;      // malování podlahy
+let aiming=false;                     // míření vybrané bodovky
+let sel=null, selBox=null;            // vybraný objekt (Group)
+let fsel=null;                        // vybrané svítidlo (rec)
+let wsel=null, wselHelper=null;       // vybraný prvek stěny
+let drag=null;                        // {kind:'obj'|'fix'|'wel'}
+let downPt=null;
+function wallHit(e){ ndcFromEvent(e); ray.setFromCamera(ndc,camera);
+  const h=ray.intersectObjects(pickRoot.children)[0]; if(!h) return null;
+  const id=h.object.userData.wall, s=STENY[id];
+  const pos=(h.point.x-s.p1[0])*s.dir[0]+(h.point.z-s.p1[1])*s.dir[1];
+  return { w:id, pos:Math.max(0,Math.min(s.len,pos)) }; }
+function attachWselHelper(){
+  if(wselHelper){ wselHelper.geometry.dispose(); wselHelper.material.dispose(); scene.remove(wselHelper); wselHelper=null; }
+  if(!wsel) return;
+  const g=elRoot.children.find(x=>x.userData.el===wsel);
+  if(g){ wselHelper=new THREE.BoxHelper(g,COL.zlata); scene.add(wselHelper); } }
+
+function ndcFromEvent(e){ const r=renderer.domElement.getBoundingClientRect();
+  ndc.x=((e.clientX-r.left)/r.width)*2-1; ndc.y=-((e.clientY-r.top)/r.height)*2+1; }
+function floorHit(e){ ndcFromEvent(e); ray.setFromCamera(ndc,camera);
+  const p=new THREE.Vector3(); return ray.ray.intersectPlane(rovina,p)?p:null; }
+function clampObj(x,z,t){
+  x=Math.max(0.25,Math.min(ROOM.celo-0.25,x));
+  z=Math.max(0.25,Math.min(ROOM.hloubka-0.25,z));
+  if(x<vx+0.2 && z<vd+0.2){ if(vd+0.2-z < vx+0.2-x) z=vd+0.2; else x=vx+0.2; }
+  if($('snap').checked){ x=Math.round(x*4)/4; z=Math.round(z*4)/4; }
+  return [x,z];
+}
+
+function zrusRezimy(){
+  if(ghost){ ghost.traverse(o=>{ if(o.isMesh){ o.geometry.dispose(); o.material.dispose(); } }); objRoot.remove(ghost); ghost=null; ghostTyp=null; }
+  if(svGhost){ svGhost.geometry.dispose(); svGhost.material.dispose(); svRoot.remove(svGhost); svGhost=null; svTyp=null; }
+  if(wGhost){ wGhost.geometry.dispose(); wGhost.material.dispose(); scene.remove(wGhost); wGhost=null; wTyp=null; }
+  zrusMereni();
+  paintMat=-1; painting=false; aiming=false;
+  renderer.domElement.classList.remove('paint');
+  document.querySelectorAll('.kat.act,.swatch.act').forEach(x=>x.classList.remove('act'));
+  $('paintStop').style.display='none';
+  $('fAim').classList.remove('act');
+  tipuj(null);
+}
+function zghostuj(g){ g.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone(); o.material.transparent=true; o.material.opacity=0.55; o.material.depthWrite=false; } }); return g; }
+
+function zacniUmistovani(t){
+  zrusRezimy(); vyberObjekt(null); vyberSvitidlo(null);
+  ghostTyp=t; ghost=zghostuj(TYPY[t].vyrob(barvaObj({t}))); ghost.visible=false; objRoot.add(ghost);
+  document.querySelector(`.kat[data-t="${t}"]`)?.classList.add('act');
+  tipuj(`${TYPY[t].nazev}: klikni do prostoru (Shift = více kusů, Esc = konec)`);
+}
+function zacniSvitidlo(t){
+  zrusRezimy(); vyberObjekt(null); vyberSvitidlo(null);
+  svTyp=t;
+  svGhost=new THREE.Mesh(new THREE.SphereGeometry(0.06,14,10),
+    new THREE.MeshBasicMaterial({color:COL.zlata,transparent:true,opacity:0.8}));
+  svGhost.visible=false; svRoot.add(svGhost);
+  document.querySelector(`.kat[data-s="${t}"]`)?.classList.add('act');
+  tipuj(`${SVITIDLA[t].nazev}: klikni na pozici na tracku (Shift = více kusů)`);
+}
+function zacniWallPrvek(t){
+  zrusRezimy(); vyberObjekt(null); vyberSvitidlo(null); vyberWallEl(null);
+  wTyp=t; const len=ELTYPY[t].len;
+  wGhost=new THREE.Mesh(new THREE.BoxGeometry(len,H-0.25,0.09),
+    new THREE.MeshBasicMaterial({color:COL.zlata,transparent:true,opacity:0.45,depthWrite:false}));
+  wGhost.visible=false; scene.add(wGhost);
+  document.querySelector(`.kat[data-w="${t}"]`)?.classList.add('act');
+  tipuj(`${ELTYPY[t].nazev}: klikni na stěnu (Shift = více kusů, Esc = konec)`);
+}
+function zacniMalovani(m){
+  zrusRezimy(); vyberObjekt(null); vyberSvitidlo(null);
+  paintMat=m;
+  document.querySelector(`.swatch[data-m="${m}"]`)?.classList.add('act');
+  renderer.domElement.classList.add('paint');
+  $('paintStop').style.display='block';
+  tipuj(`Maluješ: ${MATY[m].nazev} — tahej po podlaze, Esc konec`);
+}
+
+/* --- výběr objektu --- */
+function vyberObjekt(g){
+  if(selBox){ selBox.geometry.dispose(); selBox.material.dispose(); scene.remove(selBox); selBox=null; }
+  sel=g;
+  $('selbox').style.display=g?'block':'none';
+  if(g){ const o=g.userData.obj, def=TYPY[o.t];
+    $('selnm').textContent=def.nazev;
+    syncSelUI(o);
+    selBox=new THREE.BoxHelper(g,COL.zlata); scene.add(selBox);
+    const sb=$('selbarvy');
+    if(def.barvy){ sb.style.display='flex'; sb.innerHTML='';
+      BARVY.forEach((b,i)=>{ const d=document.createElement('div');
+        d.className='cdot'+((o.c??def.defC??0)===i?' act':''); d.title=b.n;
+        d.style.background='#'+b.c.toString(16).padStart(6,'0');
+        d.onclick=()=>{ o.c=i; const ng=prebarviObjekt(g,o); vyberObjekt(ng); uloz(); };
+        sb.appendChild(d); });
+    } else sb.style.display='none';
+    const wr=$('selwrap');
+    if(def.resize){ wr.style.display='block';
+      const w=o.w||def.w, sw=$('selw');
+      sw.min=def.resize[0]; sw.max=def.resize[1]; sw.value=w;
+      $('selwv').textContent=(+w).toFixed(1)+' m';
+      $('selfit').style.display=def.fit?'':'none';
+    } else wr.style.display='none';
+  }
+}
+function prebarviObjekt(g,o){
+  zahodGeometrie(g); objRoot.remove(g);
+  return vyrobObjekt(o);
+}
+/* dopasování niky: šířku roztáhne na nejbližší mezeru (sloup ↔ stěna) podle natočení */
+function dopasujNiku(o){
+  const clear=0.06, COLZ=[3.5,7.1,10.7], COLX=3.1, hw=0.065;
+  const alongX = Math.abs(Math.sin(o.r||0))<0.5;   // r≈0/π → šířka podél X; jinak podél Z
+  let center, cands;
+  if(alongX){ center=o.x; cands=[0, ROOM.celo];
+    COLZ.forEach(cz=>{ if(Math.abs(cz-o.z)<0.9) cands.push(COLX-hw, COLX+hw); });
+  } else { center=o.z; cands=[1.8, ROOM.hloubka];
+    COLZ.forEach(cz=>cands.push(cz-hw, cz+hw)); }
+  const lows=cands.filter(c=>c<center-0.02), highs=cands.filter(c=>c>center+0.02);
+  const below=lows.length?Math.max(...lows):0;
+  const above=highs.length?Math.min(...highs):(alongX?ROOM.celo:ROOM.hloubka);
+  const gap=above-below; if(!(gap>0.6)) return false;
+  o.w=Math.max(0.6, Math.min(4, gap-2*clear));
+  if(alongX) o.x=+((below+above)/2).toFixed(3); else o.z=+((below+above)/2).toFixed(3);
+  return true;
+}
+$('selw').oninput=e=>{ if(!sel)return; const o=sel.userData.obj; if(!TYPY[o.t].resize)return;
+  o.w=+e.target.value; $('selwv').textContent=o.w.toFixed(1)+' m';
+  vyberObjekt(prebarviObjekt(sel,o)); uloz(); };
+addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
+  if(mode==='walk') return;
+  if((e.ctrlKey||e.metaKey)&&!e.altKey&&e.code==='KeyZ'){ e.preventDefault(); e.shiftKey?redoKrok():undoKrok(); return; }
+  if((e.ctrlKey||e.metaKey)&&!e.altKey&&e.code==='KeyY'){ e.preventDefault(); redoKrok(); return; }
+  if(sel&&!e.ctrlKey&&!e.metaKey&&(e.code==='ArrowLeft'||e.code==='ArrowRight'||e.code==='ArrowUp'||e.code==='ArrowDown')){
+    e.preventDefault();
+    const o=sel.userData.obj, krok=e.shiftKey?0.25:0.05;
+    if(e.code==='ArrowLeft')o.x-=krok; if(e.code==='ArrowRight')o.x+=krok;
+    if(e.code==='ArrowUp')o.z-=krok;  if(e.code==='ArrowDown')o.z+=krok;
+    [o.x,o.z]=clampBounds(o.x,o.z);
+    sel.position.set(o.x,0,o.z); selBox.update(); syncSelUI(o); uloz(); }
+});
+$('selfit').onclick=()=>{ if(!sel)return; const o=sel.userData.obj; if(!TYPY[o.t].fit)return;
+  if(dopasujNiku(o)){ vyberObjekt(prebarviObjekt(sel,o)); uloz(); tipuj('Nika dopasována na '+o.w.toFixed(1)+' m'); }
+  else tipuj('Tady se nedá dopasovat — posuň niku mezi sloup a stěnu'); };
+function vyberSvitidlo(rec){
+  fsel=rec; aiming=false; $('fAim').classList.remove('act');
+  $('fselbox').style.display=rec?'block':'none';
+  aimMarker.visible=false;
+  if(!rec) return;
+  const f=rec.data, def=SVITIDLA[f.t];
+  $('fselnm').textContent=`${def.nazev} · ${def.kod}`;
+  $('fdim').value=f.dim*100; $('fdimv').textContent=Math.round(f.dim*100)+' %';
+  document.querySelectorAll('#fcct button').forEach(b=>b.classList.toggle('act',+b.dataset.k===f.k));
+  $('fzoomrow').style.display=def.zoom?'block':'none';
+  if(def.zoom){ $('fang').value=f.ang??36; $('fangv').textContent=(f.ang??36)+'°'; }
+  $('fdroprow').style.display=def.drop?'block':'none';
+  if(def.drop){ $('fdrop').value=(f.drop??1.2)*100; $('fdropv').textContent=((f.drop??1.2)).toFixed(2)+' m'; }
+  $('fAim').style.display=def.aim?'':'none';
+  if(def.aim){ aimMarker.position.set(f.tx,0.02,f.tz); aimMarker.visible=true; }
+}
+$('fdim').oninput=e=>{ if(!fsel)return; fsel.data.dim=e.target.value/100; $('fdimv').textContent=e.target.value+' %'; aktualizujSvitidlo(fsel); uloz(); };
+document.querySelectorAll('#fcct button').forEach(b=>b.onclick=()=>{ if(!fsel)return;
+  fsel.data.k=+b.dataset.k; document.querySelectorAll('#fcct button').forEach(x=>x.classList.toggle('act',x===b));
+  aktualizujSvitidlo(fsel); uloz(); });
+$('fang').oninput=e=>{ if(!fsel)return; fsel.data.ang=+e.target.value; $('fangv').textContent=e.target.value+'°'; aktualizujSvitidlo(fsel); uloz(); };
+$('fdrop').oninput=e=>{ if(!fsel)return; fsel.data.drop=e.target.value/100; $('fdropv').textContent=(e.target.value/100).toFixed(2)+' m';
+  // delka lanka vyžaduje rebuild meshe
+  const f=fsel.data; rebuildSvetla(); fsel=liveSv.find(r=>r.data===f); vyberSvitidlo(fsel); uloz(); };
+$('fAim').onclick=()=>{ if(!fsel)return; aiming=!aiming; $('fAim').classList.toggle('act',aiming);
+  tipuj(aiming?'Klikni na podlahu/zboží, kam má bodovka svítit':null); };
+$('fDel').onclick=()=>{ if(!fsel)return; smazSvitidlo(fsel); };
+$('fDup').onclick=()=>{ if(!fsel)return; const f={...fsel.data,s:fsel.data.s+0.4}; clampSvNaTrack(f);
+  stav.svetla.push(f); const rec=vyrobSvitidlo(f); vyberSvitidlo(rec); uloz(); };
+function smazSvitidlo(rec){
+  stav.svetla=stav.svetla.filter(f=>f!==rec.data);
+  if(rec.target) scene.remove(rec.target);
+  zahodGeometrie(rec.grp); svRoot.remove(rec.grp); liveSv.splice(liveSv.indexOf(rec),1);
+  vyberSvitidlo(null); uloz();
+}
+
+/* --- výběr prvku stěny --- */
+function vyberWallEl(e){
+  wsel=e;
+  $('wselbox').style.display=e?'block':'none';
+  attachWselHelper();
+  if(!e) return;
+  const s=STENY[e.w], def=ELTYPY[e.t], len=e.len??def.len;
+  $('wselnm').textContent=`${def.nazev} · ${s.nazev}`;
+  const wp=$('wpos'); wp.min=(len/2).toFixed(2); wp.max=(s.len-len/2).toFixed(2); wp.value=e.pos;
+  $('wposv').textContent=e.pos.toFixed(2)+' m';
+  $('wlenrow').style.display=def.resize?'block':'none';
+  if(def.resize){ const wl=$('wlen'); wl.min=def.resize[0]; wl.max=Math.min(def.resize[1],s.len).toFixed(1); wl.value=len;
+    $('wlenv').textContent=len.toFixed(1)+' m'; }
+}
+$('wpos').oninput=e2=>{ if(!wsel) return;
+  const len=wsel.len??ELTYPY[wsel.t].len, p=+e2.target.value;
+  if(volnyNaStene(wsel.w,p,len,wsel)){ wsel.pos=p; $('wposv').textContent=p.toFixed(2)+' m';
+    rebuildSteny(); attachWselHelper(); uloz(); }
+  else e2.target.value=wsel.pos; };
+$('wlen').oninput=e2=>{ if(!wsel) return;
+  const s=STENY[wsel.w]; let len=+e2.target.value;
+  let p=Math.max(len/2,Math.min(s.len-len/2,wsel.pos));
+  if(volnyNaStene(wsel.w,p,len,wsel)){ wsel.len=len; wsel.pos=p;
+    $('wlenv').textContent=len.toFixed(1)+' m';
+    const wp=$('wpos'); wp.min=(len/2).toFixed(2); wp.max=(s.len-len/2).toFixed(2); wp.value=p;
+    $('wposv').textContent=p.toFixed(2)+' m';
+    rebuildSteny(); attachWselHelper(); uloz(); }
+  else e2.target.value=wsel.len??ELTYPY[wsel.t].len; };
+$('wDel').onclick=()=>{ if(!wsel) return;
+  stav.steny=stav.steny.filter(x=>x!==wsel);
+  vyberWallEl(null); rebuildSteny(); uloz(); };
+
+/* --- toolbar vybraného objektu --- */
+$('oRotL').onclick=()=>{ if(sel){ sel.rotation.y+=Math.PI/4; sel.userData.obj.r=sel.rotation.y; selBox.update(); syncSelUI(sel.userData.obj); uloz(); } };
+$('oRotR').onclick=()=>{ if(sel){ sel.rotation.y-=Math.PI/4; sel.userData.obj.r=sel.rotation.y; selBox.update(); syncSelUI(sel.userData.obj); uloz(); } };
+$('oDup').onclick=()=>{ if(!sel) return; const o={...sel.userData.obj};
+  [o.x,o.z]=clampObj(o.x+0.35,o.z+0.35,o.t); stav.objekty.push(o); vyberObjekt(vyrobObjekt(o)); uloz(); };
+$('oDel').onclick=()=>{ if(!sel) return; smazObjekt(sel); };
+function smazObjekt(g){
+  stav.objekty=stav.objekty.filter(o=>o!==g.userData.obj);
+  zahodGeometrie(g); objRoot.remove(g); vyberObjekt(null); uloz();
+}
+
+/* --- pointer handlery --- */
+function najdiKoren(o,root){ while(o && o.parent!==root) o=o.parent; return o; }
+renderer.domElement.addEventListener('pointerdown',e=>{
+  if(mode==='walk') return;
+  if(e.button===2){ zrusRezimy(); return; }
+  if(e.button!==0) return;
+  downPt=[e.clientX,e.clientY];
+  if(ghost||svGhost||wGhost||aiming||mericiRezim) return;      // umístí se na pointerup
+  if(paintMat>=0){ const p=floorHit(e); if(p){ painting=true; orbit.enabled=false; malujBod(p); } return; }
+  // výběr/drag svítidla
+  ndcFromEvent(e); ray.setFromCamera(ndc,camera);
+  const hitS=ray.intersectObjects(svRoot.children,true)[0];
+  if(hitS){ const root=najdiKoren(hitS.object,svRoot);
+    const rec=liveSv.find(r=>r.grp===root);
+    if(rec){ vyberObjekt(null); vyberWallEl(null); vyberSvitidlo(rec); drag={kind:'fix'}; orbit.enabled=false; return; } }
+  // výběr/drag objektu
+  const hitO=ray.intersectObjects(objRoot.children,true)[0];
+  if(hitO){ const root=najdiKoren(hitO.object,objRoot);
+    if(root&&root!==ghost){ vyberSvitidlo(null); vyberWallEl(null); vyberObjekt(root); drag={kind:'obj'}; orbit.enabled=false; return; } }
+  // výběr/drag prvku stěny (výloha/dveře)
+  const hitW=ray.intersectObjects(elRoot.children,true)[0];
+  if(hitW){ const root=najdiKoren(hitW.object,elRoot);
+    if(root&&root.userData.el){ vyberObjekt(null); vyberSvitidlo(null); vyberWallEl(root.userData.el);
+      drag={kind:'wel'}; orbit.enabled=false; return; } }
+});
+function updObjGhost(e){ const p=floorHit(e); if(p){ const [x,z]=clampObj(p.x,p.z,ghostTyp); ghost.visible=true; ghost.position.set(x,0,z); } }
+function updSvGhost(e){ const p=floorHit(e); if(!p) return;
+  let best=0,bd=1e9; stav.tracks.forEach((t,i)=>{
+    const oriX=t.ori==='X', perp=oriX?Math.abs(t.a-p.z):Math.abs(t.a-p.x), along=oriX?p.x:p.z;
+    const pen=perp+((along<t.od||along>t.do)?40:0); if(pen<bd){bd=pen;best=i;} });
+  const t=trk(best), oriX=t.ori==='X', along=oriX?p.x:p.z;
+  const s=Math.max(t.od+0.12,Math.min(t.do-0.12,along));
+  svGhost.visible=true; svGhost.position.set(oriX?s:t.a,H-0.1,oriX?t.a:s); svGhost.userData={tr:best,s}; }
+function updWGhost(e){ const hit=wallHit(e);
+  if(hit){ const len=ELTYPY[wTyp].len, s=STENY[hit.w];
+    const p=Math.max(len/2,Math.min(s.len-len/2,hit.pos));
+    const ok=volnyNaStene(hit.w,p,len,null);
+    const mid=bodNaStene(s,p);
+    wGhost.visible=true; wGhost.position.set(mid[0],(H-0.25)/2,mid[1]); wGhost.rotation.y=s.ang;
+    wGhost.material.color.set(ok?COL.zlata:0xcc4444);
+    wGhost.userData={w:hit.w,pos:p,ok};
+  } else wGhost.visible=false; }
+renderer.domElement.addEventListener('pointermove',e=>{
+  if(mode==='walk') return;
+  if(ghost){ updObjGhost(e); return; }
+  if(svGhost){ updSvGhost(e); return; }
+  if(wGhost){ updWGhost(e); return; }
+  if(painting){ const p=floorHit(e); if(p) malujBod(p); return; }
+  if(drag&&sel&&drag.kind==='obj'){ const p=floorHit(e); if(p){ const o=sel.userData.obj;
+      [o.x,o.z]=clampObj(p.x,p.z,o.t); sel.position.set(o.x,0,o.z); selBox.update(); syncSelUI(o); } return; }
+  if(drag&&wsel&&drag.kind==='wel'){ const hit=wallHit(e);
+    if(hit&&hit.w===wsel.w){ const len=wsel.len??ELTYPY[wsel.t].len, s=STENY[wsel.w];
+      let p=Math.max(len/2,Math.min(s.len-len/2,hit.pos));
+      if(!volnyNaStene(wsel.w,p,len,wsel)){
+        let nasel=null;
+        for(let d=0.05; d<=1.2; d+=0.05){
+          if(volnyNaStene(wsel.w,p-d,len,wsel)){ nasel=p-d; break; }
+          if(volnyNaStene(wsel.w,p+d,len,wsel)){ nasel=p+d; break; } }
+        if(nasel===null) return; p=nasel; }
+      wsel.pos=+p.toFixed(2);
+      const g=elRoot.children.find(x=>x.userData.el===wsel);
+      if(g){ const mid=bodNaStene(s,wsel.pos); g.position.set(mid[0],0,mid[1]); }
+      if(wselHelper) wselHelper.update();
+      $('wpos').value=wsel.pos; $('wposv').textContent=wsel.pos.toFixed(2)+' m';
+    } return; }
+  if(drag&&fsel&&drag.kind==='fix'){ const p=floorHit(e); if(p){ const f=fsel.data;
+      let best=0,bd=1e9; stav.tracks.forEach((t,i)=>{
+        const oriX=t.ori==='X', perp=oriX?Math.abs(t.a-p.z):Math.abs(t.a-p.x), along=oriX?p.x:p.z;
+        const pen=perp+((along<t.od||along>t.do)?40:0); if(pen<bd){bd=pen;best=i;} });
+      const staryTr=f.tr; f.tr=best;
+      const t=trk(best); f.s=t.ori==='X'?p.x:p.z; clampSvNaTrack(f);
+      if(staryTr!==best){ const data=f; rebuildSvetla(); fsel=liveSv.find(r=>r.data===data); vyberSvitidlo(fsel); drag={kind:'fix'}; }
+      else aktualizujSvitidlo(fsel); } return; }
+});
+renderer.domElement.addEventListener('pointerup',e=>{
+  if(mode==='walk') return;
+  const klik = downPt && Math.hypot(e.clientX-downPt[0],e.clientY-downPt[1])<6;
+  downPt=null;
+  if(painting){ painting=false; orbit.enabled=true; uloz(); return; }
+  if(drag){ const byloWel=drag.kind==='wel', byloObj=drag.kind==='obj'; drag=null; orbit.enabled=true;
+    if(byloWel){ rebuildSteny(); attachWselHelper(); }
+    else if(byloObj&&sel&&$('autonika').checked){ const o=sel.userData.obj;
+      if(TYPY[o.t].fit&&dopasujNiku(o)) vyberObjekt(prebarviObjekt(sel,o)); }
+    uloz(); return; }
+  if(!klik) return;
+  if(mericiRezim){ const p=floorHit(e); if(p){
+      if(!merA){ merA=p.clone(); tipuj('…a teď klikni na druhý bod'); }
+      else { nakresliMereni(merA,p); merA=null; tipuj('Změřeno ✓ — další měření: klikni první bod (Esc = konec)'); } }
+    return; }
+  if(ghost) updObjGhost(e);      // dopočet z místa kliknutí — na dotykové obrazovce nepřijde pointermove
+  if(svGhost) updSvGhost(e);
+  if(wGhost) updWGhost(e);
+  if(wGhost&&wGhost.visible&&wGhost.userData.ok){
+    const {w,pos}=wGhost.userData;
+    const el2={t:wTyp,w,pos:+pos.toFixed(2),len:ELTYPY[wTyp].len};
+    stav.steny.push(el2); rebuildSteny(); uloz();
+    if(!e.shiftKey){ zrusRezimy(); vyberWallEl(el2); }
+    return;
+  }
+  if(ghost&&ghost.visible){
+    const o={t:ghostTyp,x:ghost.position.x,z:ghost.position.z,r:ghost.rotation.y};
+    if(TYPY[ghostTyp].barvy) o.c=TYPY[ghostTyp].defC??0;
+    stav.objekty.push(o); const g=vyrobObjekt(o); uloz();
+    if(!e.shiftKey){ const t=ghostTyp; zrusRezimy(); vyberObjekt(g); }
+    return;
+  }
+  if(svGhost&&svGhost.visible){
+    const {tr,s}=svGhost.userData; const t=trk(tr), oriX=t.ori==='X';
+    let tx,tz;
+    if(oriX){ tz = t.a<CZ ? Math.max(0.4,t.a-1.4) : Math.min(ROOM.hloubka-0.4,t.a+1.4); tx=+Math.min(ROOM.celo-0.4,s+0.25).toFixed(2); }
+    else    { tx = t.a<CX ? Math.max(0.4,t.a-1.4) : Math.min(ROOM.celo-0.4,t.a+1.4); tz=+Math.min(ROOM.hloubka-0.4,s+0.25).toFixed(2); }
+    const f={t:svTyp,tr,s:+s.toFixed(2),tx,tz,k:3000,dim:0.85};
+    if(SVITIDLA[svTyp].zoom) f.ang=36;
+    if(SVITIDLA[svTyp].drop) f.drop=1.2;
+    stav.svetla.push(f); const rec=vyrobSvitidlo(f); uloz();
+    if(!e.shiftKey){ zrusRezimy(); vyberSvitidlo(rec); }
+    return;
+  }
+  if(aiming&&fsel){ const p=floorHit(e); if(p){ const f=fsel.data;
+      f.tx=+p.x.toFixed(2); f.tz=+p.z.toFixed(2); aktualizujSvitidlo(fsel);
+      aimMarker.position.set(f.tx,0.02,f.tz);
+      aiming=false; $('fAim').classList.remove('act'); tipuj(null); uloz(); } return; }
+  // klik do prázdna → odznačit
+  ndcFromEvent(e); ray.setFromCamera(ndc,camera);
+  if(!ray.intersectObjects([...objRoot.children,...svRoot.children,...elRoot.children],true).length){
+    vyberObjekt(null); vyberSvitidlo(null); vyberWallEl(null);
+  }
+});
+renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+
+function malujBod(p){
+  const ci=Math.floor(p.x/GRID), cj=Math.floor(p.z/GRID);
+  if(ci<0||cj<0||ci>=FC||cj>=FR) return;
+  if(stav.podlaha[cj*FC+ci]===paintMat) return;
+  stav.podlaha[cj*FC+ci]=paintMat; drawCell(ci,cj); fTex.needsUpdate=true;
+}
+
+/* --- klávesy editoru --- */
+addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT') return;
+  if(mode==='walk') return;
+  if(e.code==='Escape'){ zrusRezimy(); vyberObjekt(null); vyberSvitidlo(null); vyberWallEl(null); }
+  if(e.code==='KeyR'&&sel){ sel.rotation.y+=(e.shiftKey?-1:1)*Math.PI/4; sel.userData.obj.r=sel.rotation.y; selBox.update(); syncSelUI(sel.userData.obj); uloz(); }
+  if(e.code==='KeyR'&&ghost){ ghost.rotation.y+=(e.shiftKey?-1:1)*Math.PI/4; }
+  if((e.code==='Delete'||e.code==='Backspace')){ if(sel) smazObjekt(sel); else if(fsel) smazSvitidlo(fsel);
+    else if(wsel){ stav.steny=stav.steny.filter(x=>x!==wsel); vyberWallEl(null); rebuildSteny(); uloz(); } }
+  if(e.code==='KeyD'&&(e.ctrlKey||e.metaKey)){ e.preventDefault();
+    if(sel) $('oDup').onclick(); else if(fsel) $('fDup').onclick(); }
+});
+
+/* ===================================================================
+   REŽIMY — orbit / procházka / černý strop
+   =================================================================== */
+const orbit = new OrbitControls(camera, renderer.domElement);
+orbit.target.set(CX,1.1,CZ); orbit.enableDamping=true; orbit.dampingFactor=0.08;
+orbit.maxPolarAngle=Math.PI*0.49; orbit.minDistance=3; orbit.maxDistance=70; orbit.update();
+const walk = new PointerLockControls(camera, renderer.domElement);
+const keys={f:false,b:false,l:false,r:false}; const velocity=new THREE.Vector3(), dirv=new THREE.Vector3();
+let mode='orbit';
+const clampNum=(v,a,b)=>Math.max(a,Math.min(b,v));
+function clampInside(){ camera.position.x=clampNum(camera.position.x,0.4,ROOM.celo-0.4); camera.position.z=clampNum(camera.position.z,0.5,ROOM.hloubka-0.4); camera.position.y=1.62; }
+const hint=document.getElementById('hint'), btnOrbit=document.getElementById('btnOrbit'), btnWalk=document.getElementById('btnWalk');
+
+function aplikujCine(){
+  const on=stav.cine;
+  strop.material.map = on?stropCerna:stropBila; strop.material.needsUpdate=true;
+  strop.visible = (mode==='walk');   // v orbitu se řídí dynamicky v animate() podle výšky kamery
+  scene.background.set(on?0x26282c:0xdfe2e4);
+  renderer.toneMappingExposure = on?1.12:1.05;
+  document.getElementById('btnCine').classList.toggle('active',on);
+  nikaSvetla.forEach(l=>l.intensity = on?2.2:1.1);   // niky září zevnitř (silněji při černém stropu)
+  aplikujDenni();
+}
+function setOrbit(){ mode='orbit'; walk.unlock(); orbit.enabled=true;
+  camera.position.set(CX, ROOM.vyska*3.4, -ROOM.hloubka*0.5); orbit.target.set(CX,1.1,CZ); orbit.minDistance=3; orbit.update();
+  btnOrbit.classList.add('active'); btnWalk.classList.remove('active'); hint.style.display='none';
+  aplikujCine(); }
+function setWalk(){ mode='walk'; orbit.enabled=false;
+  zrusRezimy(); vyberObjekt(null); vyberSvitidlo(null);
+  editor.classList.remove('open'); $('btnEditor').classList.remove('active');
+  camera.position.set(vx/2,1.62,vd+0.6); camera.lookAt(5,1.5,12);
+  btnWalk.classList.add('active'); btnOrbit.classList.remove('active'); hint.style.display='flex';
+  strop.visible=true; aplikujCine(); }
+btnOrbit.onclick=setOrbit; btnWalk.onclick=setWalk; hint.onclick=()=>walk.lock();
+document.getElementById('btnCine').onclick=()=>{ stav.cine=!stav.cine; aplikujCine(); uloz(); };
+walk.addEventListener('lock',()=>hint.style.display='none');
+walk.addEventListener('unlock',()=>{ if(mode==='walk') hint.style.display='flex'; });
+addEventListener('keydown',e=>{ if(e.code==='KeyW'||e.code==='ArrowUp')keys.f=1; if(e.code==='KeyS'||e.code==='ArrowDown')keys.b=1; if(e.code==='KeyA'||e.code==='ArrowLeft')keys.l=1; if(e.code==='KeyD'||e.code==='ArrowRight')keys.r=1; });
+addEventListener('keyup',e=>{ if(e.code==='KeyW'||e.code==='ArrowUp')keys.f=0; if(e.code==='KeyS'||e.code==='ArrowDown')keys.b=0; if(e.code==='KeyA'||e.code==='ArrowLeft')keys.l=0; if(e.code==='KeyD'||e.code==='ArrowRight')keys.r=0; });
+
+/* ===================================================================
+   START
+   =================================================================== */
+function obnovVse(){
+  rebuildObjekty(); rebuildTracks(); rebuildSvetla(); rebuildSteny(); redrawFloor();
+  aplikujCine(); aplikujStenaBarvu(); syncGlob(); aktualizujStats(); renderNavrhy();
+  vyberObjekt(null); vyberSvitidlo(null); vyberWallEl(null);
+}
+const ulozeno = localStorage.getItem(KLIC);
+if(!ulozeno || !aplikuj(ulozeno)) vychoziStav();
+obnovVse();
+zapisHistorii();   // výchozí bod pro Ctrl+Z
+window.__stav=stav; window.__cine=(on)=>{ stav.cine=on; aplikujCine(); };
+window.__api={ rebuildSteny, rebuildTracks, rebuildSvetla, obnovVse, volnyNaStene, serializuj, aplikuj, vychoziStav, uloz, undoKrok, redoKrok };
+
+const clock=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate); const dt=Math.min(clock.getDelta(),0.05);
+  if(mode==='walk' && walk.isLocked){
+    velocity.x-=velocity.x*10*dt; velocity.z-=velocity.z*10*dt;
+    dirv.z=Number(keys.f)-Number(keys.b); dirv.x=Number(keys.r)-Number(keys.l); dirv.normalize();
+    const SPEED=30;
+    if(keys.f||keys.b) velocity.z-=dirv.z*SPEED*dt;
+    if(keys.l||keys.r) velocity.x-=dirv.x*SPEED*dt;
+    walk.moveRight(-velocity.x*dt); walk.moveForward(-velocity.z*dt); clampInside();
+  } else { orbit.update();
+    /* dollhouse: strop se ukáže, jakmile kamera sjede pod úroveň stropu (jinak by zakrýval interiér) */
+    strop.visible = camera.position.y < H-0.05;
+  }
+  if(selBox) selBox.update();
+  if(merMid){ const v=merMid.clone().project(camera), ml=$('mlabel');
+    if(v.z<1){ ml.style.left=((v.x*0.5+0.5)*innerWidth)+'px'; ml.style.top=((-v.y*0.5+0.5)*innerHeight)+'px'; ml.style.display='block'; }
+    else ml.style.display='none'; }
+  renderer.render(scene,camera);
+}
+animate();
+document.getElementById('loading').style.display='none';
+addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+addEventListener('beforeunload',()=>uloz(true));
