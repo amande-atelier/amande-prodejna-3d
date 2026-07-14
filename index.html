@@ -38,8 +38,8 @@
   #editor { position:fixed; top:64px; right:12px; bottom:12px; width:300px; z-index:12; display:none; flex-direction:column;
             background:#1d1c1af2; border:1px solid #ffffff22; border-radius:14px; color:#eee; backdrop-filter:blur(8px); overflow:hidden; }
   #editor.open { display:flex; }
-  #ehead { display:flex; align-items:center; gap:5px; padding:10px 10px; border-bottom:1px solid #ffffff18; flex-wrap:wrap; }
-  #ehead .t { font-weight:700; letter-spacing:1.5px; color:var(--zlata); font-size:12.5px; }
+  #ehead { display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:1px solid #ffffff18; }
+  #ehead .t { font-weight:700; letter-spacing:2px; color:var(--zlata); font-size:13px; }
   #ehead .sp { flex:1; }
   #ehead button { background:#ffffff14; border:1px solid #ffffff22; color:#ddd; border-radius:8px; cursor:pointer; padding:4px 9px; font-size:12px; }
   #ehead button:hover { border-color:var(--zlata); color:var(--zlata); }
@@ -104,24 +104,6 @@
   .trbox .trl label { font-size:10.5px; color:#999; width:20px; }
   .trbox .trl input { flex:1; }
   .trbox .trl .val { min-width:44px; }
-  /* --- doplňky editoru (v18) --- */
-  #ehead button.act { background:var(--zlata); color:#1a1a1a; border-color:var(--zlata); }
-  #ehead button:disabled { opacity:.35; cursor:default; }
-  #ehead button:disabled:hover { border-color:#ffffff22; color:#ddd; }
-  .numin { width:64px; background:#ffffff10; border:1px solid #ffffff26; color:#eee; border-radius:7px;
-           padding:5px 6px; font-size:12px; text-align:right; }
-  .numin:focus { outline:none; border-color:var(--zlata); }
-  .row label.mini-l { flex:0 0 auto; font-size:11px; color:#999; }
-  #mlabel { position:fixed; z-index:11; display:none; background:var(--zlata); color:#1a1a1a; font-size:12.5px;
-            font-weight:700; padding:3px 10px; border-radius:999px; pointer-events:none; transform:translate(-50%,-130%);
-            box-shadow:0 3px 12px #0007; white-space:nowrap; }
-  @media (max-width:640px){
-    #legend { display:none; }
-    #editor { width:calc(100vw - 20px); right:10px; top:56px; bottom:8px; }
-    #panel { flex-wrap:wrap; justify-content:center; width:calc(100vw - 12px); bottom:8px; }
-    #panel button { padding:8px 10px; font-size:12px; }
-    #topbar .dims { display:none; }
-  }
 </style>
 </head>
 <body>
@@ -144,7 +126,6 @@
   <button id="btnEditor">🛠 Editor</button>
 </div>
 <div id="tip"></div>
-<div id="mlabel"></div>
 <div id="hint"><div class="box"><h2>Režim procházky</h2>
   <p><kbd>W</kbd> <kbd>A</kbd> <kbd>S</kbd> <kbd>D</kbd> — pohyb · <b>myš</b> — rozhlížení · <kbd>Esc</kbd> ven<br><br>Klikni pro start</p></div></div>
 <div id="loading">NAČÍTÁM 3D PRODEJNU…</div>
@@ -152,12 +133,8 @@
 <!-- ================= EDITOR PANEL ================= -->
 <div id="editor">
   <div id="ehead">
-    <span class="t">EDITOR</span><span class="sp"></span>
-    <button id="btnUndo" title="zpět (Ctrl+Z)" disabled>↶</button>
-    <button id="btnRedo" title="vpřed (Ctrl+Shift+Z)" disabled>↷</button>
-    <button id="btnMerit" title="změřit vzdálenost (2 kliknutí na podlahu)">📏</button>
-    <button id="btnFoto" title="uložit snímek obrazovky (PNG)">📸</button>
-    <button id="btnTop" title="pohled shora">📐</button>
+    <span class="t">🛠 EDITOR</span><span class="sp"></span>
+    <button id="btnTop" title="pohled shora">📐 Shora</button>
     <button id="btnEclose">✕</button>
   </div>
   <div id="tabs">
@@ -178,16 +155,8 @@
         <button id="oDel" title="smazat (Del)">🗑</button>
       </div>
       <div id="selbarvy" style="display:none"></div>
-      <div class="row" style="margin-top:8px"><label>Půdorys (š × hl)</label><span class="val" id="seldims"></span></div>
-      <div class="row">
-        <label class="mini-l">X</label><input type="number" id="selx" class="numin" step="0.05" min="0">
-        <label class="mini-l">Z</label><input type="number" id="selz" class="numin" step="0.05" min="0">
-        <span class="val" style="min-width:0;flex:1">m od rohu</span>
-      </div>
-      <div class="row"><label>Otočení (jemně)</label><span class="val" id="selrv"></span></div>
-      <input type="range" id="selr" min="-180" max="180" step="5">
       <div id="selwrap" style="display:none">
-        <div class="row" style="margin-top:9px"><label>Šířka / délka</label><span class="val" id="selwv"></span></div>
+        <div class="row" style="margin-top:9px"><label>Délka niky</label><span class="val" id="selwv"></span></div>
         <input type="range" id="selw" min="0.6" max="4" step="0.1">
         <button class="btn full" id="selfit" style="margin-top:6px">📐 Dopasovat (sloup ↔ stěna)</button>
       </div>
@@ -196,7 +165,7 @@
     <div class="grid2" id="katalog"></div>
     <div class="row" style="margin-top:10px"><label><input type="checkbox" id="snap" checked> přichytávat na 0,25 m</label></div>
     <div class="row"><label><input type="checkbox" id="autonika"> auto-délka niky (dopasovat při přesunu)</label></div>
-    <div class="note">Klikni na položku → umísti kliknutím do prostoru (Shift = více kusů). Tažením přesuneš, <b>R</b> otočí, <b>Del</b> smaže, <b>Esc</b> zruší. <b>Šipky</b> = jemný posun po 5 cm (se Shift 25 cm), <b>Ctrl+Z</b> zpět, <b>Ctrl+D</b> duplikát. U regálů, gondol, štendrů, pultů, kabinek a nik jde posuvníkem měnit šířka.</div>
+    <div class="note">Klikni na položku → umísti kliknutím do prostoru (Shift = více kusů). Tažením přesuneš, <b>R</b> otočí, <b>Del</b> smaže, <b>Esc</b> zruší. Niku po výběru natáhneš posuvníkem <b>Délka niky</b> nebo tlačítkem <b>Dopasovat</b>.</div>
   </div>
 
   <div class="tabc" id="tab-pod">
@@ -263,9 +232,6 @@
     <div class="sec">Prvky na stěny</div>
     <div class="grid2" id="wkatalog"></div>
     <div class="note">Klikni na prvek a pak na stěnu, kam ho chceš umístit (Shift = více kusů). Tažením posuneš podél stěny. Hlavní vstup ve výklenku zůstává pevný.</div>
-    <div class="sec">Barva stěn (výmalba)</div>
-    <div class="grid2" id="wallswatch"></div>
-    <div class="note">Přebarví všechny obvodové stěny i vyzděné stěnky z katalogu.</div>
   </div>
 
   <div class="tabc" id="tab-sou">
@@ -297,19 +263,1587 @@
 </script>
 
 <script type="module">
-/* JS editoru je rozdělen do parts/p1–p3 (limit velikosti při AI deployi přes GitHub API).
-   Za běhu se složí a načte jako jeden ES modul — pořadí p1,p2,p3 je závazné.
-   Import mapa výše platí i pro blob modul (stejně jako pro CDN addony). */
-const VER='v18';
-try{
-  const casti=await Promise.all(['parts/p1','parts/p2','parts/p3'].map(u=>
-    fetch(u+'?'+VER).then(r=>{ if(!r.ok) throw new Error(u+' → HTTP '+r.status); return r.text(); })));
-  await import(URL.createObjectURL(new Blob(casti,{type:'text/javascript'})));
-}catch(err){
-  console.error('Nepodařilo se načíst editor:', err);
-  const l=document.getElementById('loading');
-  l.style.display='flex'; l.textContent='CHYBA NAČTENÍ: '+err.message+' — zkus obnovit stránku (Ctrl+F5)';
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { PointerLockControls } from 'three/addons/controls/PointerLockControls.js';
+import { RoomEnvironment } from 'three/addons/environments/RoomEnvironment.js';
+
+/* ===================================================================
+   AMANDE — nová prodejna po KB bance (~147 m²) — INTERAKTIVNÍ EDITOR
+   Tvar: obdélník 8,5 × 18,5 m s výklenkem 4,2 × 2,5 vlevo vpředu.
+   Svítidla dle katalogu "SG20 E 48V Magnetic Track Light" (SmartGlow).
+   =================================================================== */
+const ROOM = {
+  celo:    8.9,    // šířka (přesně naměřeno: spodní stěna 8,9 m)
+  hloubka: 15.6,   // hloubka (pravá strana 15,6 m, levá 13,8 m)
+  vyska:   3.1,    // světlá výška stropu 3,1 m
+  vyklenek:{ sirka:5.3, hloubka:1.8 }, // zalomení vlevo nahoře (horní vlevo 5,3 m × hloubka 1,8 m)
+};
+const vx = ROOM.vyklenek.sirka, vd = ROOM.vyklenek.hloubka;
+const P = {
+  CL:[vx, 0], CP:[ROOM.celo, 0], ZP:[ROOM.celo, ROOM.hloubka],
+  ZL:[0, ROOM.hloubka], VL:[0, vd], VR:[vx, vd],
+};
+const obrys = [P.CL, P.CP, P.ZP, P.ZL, P.VL, P.VR];
+const COL = { stena:0xeceef0, sloup:0xf4f5f6, zlata:0xc5a059, kov:0x33343a, sklo:0xafc2c6 };
+document.getElementById('dims').textContent = `${ROOM.celo} × ${ROOM.hloubka} m · ~129 m²`;
+
+/* ---------- renderer / scéna / kamera ---------- */
+const app = document.getElementById('app');
+const renderer = new THREE.WebGLRenderer({ antialias:true });
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+app.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0xdfe2e4);
+const pmrem = new THREE.PMREMGenerator(renderer);
+scene.environment = pmrem.fromScene(new RoomEnvironment(), 0.04).texture;
+
+const CX = ROOM.celo/2, CZ = ROOM.hloubka/2;
+const camera = new THREE.PerspectiveCamera(60, innerWidth/innerHeight, 0.1, 400);
+camera.position.set(CX, ROOM.vyska*3.4, -ROOM.hloubka*0.5);
+
+/* ---------- denní světlo ---------- */
+const hemi = new THREE.HemisphereLight(0xffffff, 0x9a9488, 0.5); scene.add(hemi);
+const sun = new THREE.DirectionalLight(0xfff4e2, 1.45);
+sun.position.set(ROOM.celo*1.4, ROOM.vyska*4.5, -ROOM.hloubka*0.25);
+sun.castShadow = true; sun.shadow.mapSize.set(2048,2048);
+sun.shadow.camera.near=0.5; sun.shadow.camera.far=90;
+const sb = Math.max(ROOM.celo, ROOM.hloubka);
+sun.shadow.camera.left=-sb; sun.shadow.camera.right=sb; sun.shadow.camera.top=sb; sun.shadow.camera.bottom=-sb;
+sun.shadow.bias=-0.0004; sun.target.position.set(CX,0,CZ); scene.add(sun); scene.add(sun.target);
+
+/* ---------- materiály ---------- */
+const M = {
+  stena: new THREE.MeshStandardMaterial({ color:COL.stena, roughness:0.96 }),
+  sloup: new THREE.MeshStandardMaterial({ color:COL.sloup, roughness:0.8 }),
+  kov:   new THREE.MeshStandardMaterial({ color:COL.kov, roughness:0.4, metalness:0.7 }),
+  sklo:  new THREE.MeshPhysicalMaterial({ color:COL.sklo, roughness:0.04, metalness:0, transmission:0.92, transparent:true, opacity:0.3 }),
+  cernyMat: new THREE.MeshStandardMaterial({ color:0x1b1b1e, roughness:0.6 }),
+  cernyKov: new THREE.MeshStandardMaterial({ color:0x222226, roughness:0.35, metalness:0.7 }),
+  drevo:    new THREE.MeshStandardMaterial({ color:0x9c7a4f, roughness:0.55 }),
+  drevoSv:  new THREE.MeshStandardMaterial({ color:0xb59a72, roughness:0.6 }),
+  zlato:    new THREE.MeshStandardMaterial({ color:COL.zlata, roughness:0.25, metalness:1.0 }),
+  latka:    new THREE.MeshStandardMaterial({ color:0x8a8580, roughness:0.95 }),
+  latkaTm:  new THREE.MeshStandardMaterial({ color:0x3c3a3e, roughness:0.95 }),
+  zrcadlo:  new THREE.MeshStandardMaterial({ color:0xcfd6da, roughness:0.03, metalness:1.0 }),
+  zelen:    new THREE.MeshStandardMaterial({ color:0x2f4a33, roughness:0.9 }),
+};
+/* mramor — tmavý se zlatavými žilkami (brand Amande) */
+function mramorTex(){
+  const S=512, c=document.createElement('canvas'); c.width=c.height=S; const x=c.getContext('2d');
+  const g=x.createLinearGradient(0,0,S,S); g.addColorStop(0,'#17171a'); g.addColorStop(0.5,'#1f1f23'); g.addColorStop(1,'#151517');
+  x.fillStyle=g; x.fillRect(0,0,S,S);
+  function zilka(barva,sirka,alpha){
+    x.strokeStyle=barva; x.globalAlpha=alpha; x.lineWidth=sirka; x.beginPath();
+    let px=Math.random()*S, py=-20; x.moveTo(px,py);
+    while(py<S+20){ const nx=px+(Math.random()-0.5)*90, ny=py+30+Math.random()*55;
+      x.quadraticCurveTo(px+(Math.random()-0.5)*60, (py+ny)/2, nx, ny); px=nx; py=ny; }
+    x.stroke(); x.globalAlpha=1;
+  }
+  for(let i=0;i<4;i++) zilka('#c5a059',1+Math.random()*1.6,0.25+Math.random()*0.3);
+  for(let i=0;i<3;i++) zilka('#d8d4cc',0.7+Math.random()*1.2,0.18+Math.random()*0.22);
+  for(let i=0;i<2;i++) zilka('#8a8580',3.5,0.06);
+  const t=new THREE.CanvasTexture(c); t.anisotropy=8; t.colorSpace=THREE.SRGBColorSpace; return t;
 }
+M.mramor = new THREE.MeshStandardMaterial({ map:mramorTex(), color:0xffffff, roughness:0.16, metalness:0.05 });
+
+/* travertin (flexibilní kamenná dýha) — světlý ivory, jemná vodorovná kresba, matný, bezespárý */
+function travertinTex(){
+  const W=512,Hc=512,c=document.createElement('canvas'); c.width=W; c.height=Hc; const x=c.getContext('2d');
+  x.fillStyle='#e8e0d2'; x.fillRect(0,0,W,Hc);
+  for(let i=0;i<70;i++){ // vodorovné jemné žilky
+    const y=Math.random()*Hc, h=0.6+Math.random()*1.8, a=0.04+Math.random()*0.07;
+    x.strokeStyle=`rgba(${Math.random()<0.5?'200,188,168':'247,242,232'},${a.toFixed(3)})`;
+    x.lineWidth=h; x.beginPath(); let px=0,py=y; x.moveTo(0,y);
+    while(px<W){ px+=20+Math.random()*40; py=y+(Math.random()-0.5)*4; x.lineTo(px,py); } x.stroke();
+  }
+  for(let i=0;i<1400;i++){ // jemná zrnitost / póry travertinu
+    const r=Math.random(); x.fillStyle=`rgba(${r<0.5?'205,193,173':'250,246,238'},0.05)`;
+    x.fillRect(Math.random()*W,Math.random()*Hc,1.3,1.3); }
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.anisotropy=8; t.colorSpace=THREE.SRGBColorSpace; return t;
+}
+M.travertin = new THREE.MeshStandardMaterial({ map:travertinTex(), color:0xffffff, roughness:0.9, metalness:0.0 });
+M.orech     = new THREE.MeshStandardMaterial({ color:0x6b4a2f, roughness:0.5 });   // masivní ořech (police)
+M.mosaz     = new THREE.MeshStandardMaterial({ color:0xc69a4c, roughness:0.28, metalness:1.0 }); // broušená mosaz (tyč)
+/* podsvícené logo Amande (textura z logo-data.js) */
+const logoTex = (typeof window!=='undefined' && window.AMANDE_LOGO)
+  ? (()=>{ const t=new THREE.TextureLoader().load(window.AMANDE_LOGO); t.colorSpace=THREE.SRGBColorSpace; t.anisotropy=8; return t; })() : null;
+
+const room = new THREE.Group(); scene.add(room);
+const H = ROOM.vyska, T = 0.12;
+
+function shapeFromPts(pts){ const s=new THREE.Shape(); s.moveTo(pts[0][0],pts[0][1]); for(let i=1;i<pts.length;i++) s.lineTo(pts[i][0],pts[i][1]); s.closePath(); return s; }
+
+/* ===================================================================
+   PODLAHA — malovatelná mřížka 0,5 m (dlažba/koberec/vinyl/stěrka)
+   =================================================================== */
+const GRID = 0.5, FC = Math.round(ROOM.celo/GRID), FR = Math.round(ROOM.hloubka/GRID); // 17 × 37
+const CP_ = 24, FW = FC*CP_, FH = FR*CP_;
+const fCan = document.createElement('canvas'); fCan.width=FW; fCan.height=FH;
+const fCtx = fCan.getContext('2d');
+const fTex = new THREE.CanvasTexture(fCan);
+fTex.wrapS = fTex.wrapT = THREE.ClampToEdgeWrapping;
+fTex.repeat.set(1/(FC*GRID), 1/(FR*GRID));
+fTex.anisotropy = 8; fTex.colorSpace = THREE.SRGBColorSpace;
+
+const MATY = [
+  { id:0, nazev:'Dlažba béžová',   css:'#d9cdb8', rough:0.55 },
+  { id:1, nazev:'Koberec antracit',css:'#47474b', rough:1.0 },
+  { id:2, nazev:'Vinyl sv. dub',   css:'#b08e5f', rough:0.45 },
+  { id:3, nazev:'Vinyl tm. dub',   css:'#6e4f33', rough:0.45 },
+  { id:4, nazev:'Stěrka šedá',     css:'#9fa1a5', rough:0.7 },
+];
+function hash2(a,b){ let h=(a*73856093)^(b*19349663); h=(h^(h>>13))*1274126177; return ((h^(h>>16))>>>0)/4294967295; }
+function shade(hex,f){ const r=Math.min(255,Math.max(0,((hex>>16)&255)*f)), g=Math.min(255,Math.max(0,((hex>>8)&255)*f)), b=Math.min(255,Math.max(0,(hex&255)*f));
+  return `rgb(${r|0},${g|0},${b|0})`; }
+function drawCell(ci,cj){
+  const v = stav.podlaha[cj*FC+ci];
+  const px = ci*CP_, py = FH-(cj+1)*CP_;
+  fCtx.save(); fCtx.beginPath(); fCtx.rect(px,py,CP_,CP_); fCtx.clip();
+  if(v===0){ // dlažba 1×1 m (rastr po 2 buňkách)
+    const f = 0.97 + 0.06*hash2(ci>>1,cj>>1);
+    fCtx.fillStyle = shade(0xd9cdb8,f); fCtx.fillRect(px,py,CP_,CP_);
+    fCtx.strokeStyle='#c0b49c'; fCtx.lineWidth=2;
+    if(ci%2===0){ fCtx.beginPath(); fCtx.moveTo(px+1,py); fCtx.lineTo(px+1,py+CP_); fCtx.stroke(); }
+    if(cj%2===0){ fCtx.beginPath(); fCtx.moveTo(px,py+CP_-1); fCtx.lineTo(px+CP_,py+CP_-1); fCtx.stroke(); }
+  } else if(v===1){ // koberec
+    fCtx.fillStyle='#47474b'; fCtx.fillRect(px,py,CP_,CP_);
+    for(let i=0;i<26;i++){ const r1=hash2(ci*31+i,cj*17+i), r2=hash2(cj*53+i,ci*7-i);
+      fCtx.fillStyle = r1>0.5 ? '#4d4d52' : '#414146';
+      fCtx.fillRect(px+r1*CP_, py+r2*CP_, 1.6, 1.6); }
+  } else if(v===2||v===3){ // vinylové lamely podél hloubky (osa z)
+    const base = v===2?0xb08e5f:0x6e4f33, PW=0.19, JL=1.22;
+    const x0=ci*GRID, x1=x0+GRID;
+    for(let pc=Math.floor(x0/PW); pc*PW<x1; pc++){
+      const sx=Math.max(x0,pc*PW), ex=Math.min(x1,(pc+1)*PW);
+      const off=(pc%4)*0.33;
+      const z0=cj*GRID, z1=z0+GRID;
+      let seg=Math.floor((z0+off)/JL);
+      for(let zz=z0; zz<z1-1e-6;){
+        const segEnd=(seg+1)*JL-off, ze=Math.min(z1,segEnd);
+        const f=0.92+0.16*hash2(pc*7+1,seg*13+3);
+        fCtx.fillStyle=shade(base,f);
+        const rx=px+(sx-x0)/GRID*CP_, rw=(ex-sx)/GRID*CP_;
+        const ryTop=py+(z1-ze)/GRID*CP_, rh=(ze-zz)/GRID*CP_;
+        fCtx.fillRect(rx,ryTop,rw+0.5,rh+0.5);
+        if(segEnd<z1){ fCtx.fillStyle=shade(base,0.72); fCtx.fillRect(rx,ryTop-0.7,rw,1.4); }
+        zz=ze; seg++;
+      }
+      // podélná spára lamely
+      if(sx===pc*PW){ fCtx.fillStyle=shade(base,0.74); fCtx.fillRect(px+(sx-x0)/GRID*CP_,py,1.2,CP_); }
+    }
+  } else { // stěrka
+    const f=0.96+0.08*hash2(ci,cj);
+    fCtx.fillStyle=shade(0x9fa1a5,f); fCtx.fillRect(px,py,CP_,CP_);
+    for(let i=0;i<3;i++){ const r=hash2(ci*5+i,cj*9+i);
+      fCtx.fillStyle=`rgba(${r>0.5?255:60},${r>0.5?255:60},${r>0.5?255:64},0.05)`;
+      fCtx.beginPath(); fCtx.arc(px+hash2(i,ci+cj)*CP_, py+r*CP_, 6+8*r, 0, 7); fCtx.fill(); }
+  }
+  fCtx.restore();
+}
+function redrawFloor(){ for(let j=0;j<FR;j++) for(let i=0;i<FC;i++) drawCell(i,j); fTex.needsUpdate=true; }
+
+function inPoly(x,z,poly){ let inside=false;
+  for(let i=0,j=poly.length-1;i<poly.length;j=i++){
+    const xi=poly[i][0],zi=poly[i][1],xj=poly[j][0],zj=poly[j][1];
+    if(((zi>z)!==(zj>z)) && (x < (xj-xi)*(z-zi)/(zj-zi)+xi)) inside=!inside; }
+  return inside; }
+const PRESETY = {
+  stavajici(){ stav.podlaha.fill(0); },   // stávající stav: dlažba (zóny si Frederik domaluje)
+  vinyl(){ stav.podlaha.fill(2); },
+  vinylTmavy(){ stav.podlaha.fill(3); },
+  vinylKob(){ for(let j=0;j<FR;j++) for(let i=0;i<FC;i++) stav.podlaha[j*FC+i] = (j*GRID>ROOM.hloubka-4.5)?1:2; },
+};
+
+const podlahaMat = new THREE.MeshStandardMaterial({ map:fTex, color:0xffffff, roughness:0.6, side:THREE.DoubleSide });
+const podlaha = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPts(obrys)), podlahaMat);
+podlaha.rotation.x = Math.PI/2; podlaha.receiveShadow=true; room.add(podlaha);
+
+/* ---------- stěny (editovatelné: výlohy + dveře) ---------- */
+function stena(p1,p2,mat,h=H,tl=T,y0=0,parent=room){
+  const dx=p2[0]-p1[0], dz=p2[1]-p1[1], len=Math.hypot(dx,dz);
+  const m=new THREE.Mesh(new THREE.BoxGeometry(len,h,tl),mat);
+  m.position.set((p1[0]+p2[0])/2, y0+h/2, (p1[1]+p2[1])/2); m.rotation.y=-Math.atan2(dz,dx);
+  m.castShadow=true; m.receiveShadow=true; parent.add(m); return m;
+}
+/* definice editovatelných stěn: p1→p2, pozice prvku = metry od p1 (střed prvku) */
+const STENY = {
+  C: { p1:P.CL, p2:P.CP, nazev:'horní stěna' },     // 3,6 m (výloha 3,4)
+  P: { p1:P.CP, p2:P.ZP, nazev:'pravá stěna' },      // 15,6 m (výloha 3,0)
+  Z: { p1:P.ZL, p2:P.ZP, nazev:'spodní stěna' },     // 8,9 m (2× dveře)
+  L: { p1:P.ZL, p2:P.VL, nazev:'levá stěna' },       // 13,8 m
+  N: { p1:P.VL, p2:P.VR, nazev:'stěna výklenku' },   // 5,3 m (skleněné dveře)
+  VB:{ p1:P.VR, p2:P.CL, nazev:'prosklený schod' },  // 1,8 m (sklo do stropu)
+};
+Object.values(STENY).forEach(s=>{
+  const dx=s.p2[0]-s.p1[0], dz=s.p2[1]-s.p1[1];
+  s.len=Math.hypot(dx,dz); s.dir=[dx/s.len, dz/s.len]; s.ang=-Math.atan2(dz,dx);
+});
+const bodNaStene=(s,m)=>[ s.p1[0]+s.dir[0]*m, s.p1[1]+s.dir[1]*m ];
+const ELTYPY = {
+  dvere1: { nazev:'Dveře',            ic:'🚪', len:1.0 },
+  dvere2: { nazev:'Dveře dvoukřídlé', ic:'🚪', len:1.9 },
+  vyloha: { nazev:'Výloha (sklo)',    ic:'🪟', len:3.0, resize:[1.0,6.5] },
+};
+const wallRoot=new THREE.Group(), elRoot=new THREE.Group(), pickRoot=new THREE.Group();
+scene.add(wallRoot); scene.add(elRoot); scene.add(pickRoot);
+/* neviditelné plochy pro klikání na stěny */
+Object.entries(STENY).forEach(([id,s])=>{
+  const m=new THREE.Mesh(new THREE.PlaneGeometry(s.len,H),
+    new THREE.MeshBasicMaterial({transparent:true,opacity:0,depthWrite:false,side:THREE.DoubleSide}));
+  const mid=bodNaStene(s,s.len/2);
+  m.position.set(mid[0],H/2,mid[1]); m.rotation.y=s.ang; m.userData.wall=id;
+  pickRoot.add(m);
+});
+const ramMat=new THREE.MeshStandardMaterial({color:0x2a2a2e,roughness:0.4,metalness:0.6});
+function elDvere(len,kridla){
+  const g=new THREE.Group(); const vys=2.2;
+  [-len/2+0.04, len/2-0.04].forEach(x=>{ const s=new THREE.Mesh(new THREE.BoxGeometry(0.08,vys,0.14),ramMat); s.position.set(x,vys/2,0); g.add(s); });
+  const top=new THREE.Mesh(new THREE.BoxGeometry(len,0.1,0.14),ramMat); top.position.set(0,vys-0.05,0); g.add(top);
+  if(kridla===2){ const stred=new THREE.Mesh(new THREE.BoxGeometry(0.06,vys-0.1,0.12),ramMat); stred.position.set(0,(vys-0.1)/2,0); g.add(stred);
+    [-len/4,len/4].forEach((x,i)=>{ const madlo=new THREE.Mesh(new THREE.BoxGeometry(0.035,0.55,0.035),M.kov);
+      madlo.position.set(x+(i?-(0.09):0.09),1.05,0.09); g.add(madlo); });
+  } else { const madlo=new THREE.Mesh(new THREE.BoxGeometry(0.035,0.5,0.035),M.kov); madlo.position.set(len/2-0.2,1.0,0.09); g.add(madlo); }
+  const sklo=new THREE.Mesh(new THREE.PlaneGeometry(len-0.2,vys-0.18),M.sklo); sklo.position.set(0,(vys-0.1)/2,0.02); g.add(sklo);
+  return g;
+}
+function elVyloha(len){
+  const g=new THREE.Group();
+  const sokl=new THREE.Mesh(new THREE.BoxGeometry(len,0.18,0.1),M.kov); sokl.position.y=0.09; g.add(sokl);
+  const horni=new THREE.Mesh(new THREE.BoxGeometry(len,0.14,0.1),M.kov); horni.position.y=H-0.07; g.add(horni);
+  const sklo=new THREE.Mesh(new THREE.BoxGeometry(len-0.06,H-0.32,0.04),M.sklo); sklo.position.y=0.18+(H-0.32)/2; g.add(sklo);
+  const n=Math.max(1,Math.round(len/1.6));
+  for(let i=0;i<=n;i++){ const s=new THREE.Mesh(new THREE.BoxGeometry(0.06,H,0.06),M.kov); s.position.set(-len/2+len*i/n,H/2,0); g.add(s); }
+  return g;
+}
+function rebuildSteny(){
+  while(wallRoot.children.length) wallRoot.remove(wallRoot.children[0]);
+  while(elRoot.children.length) elRoot.remove(elRoot.children[0]);
+  Object.entries(STENY).forEach(([id,s])=>{
+    const els=stav.steny.filter(e=>e.w===id).sort((a,b)=>a.pos-b.pos);
+    let cur=0;
+    els.forEach(e=>{
+      const len=e.len??ELTYPY[e.t].len;
+      const a=Math.max(0,e.pos-len/2), b=Math.min(s.len,e.pos+len/2);
+      if(a-cur>0.01) stena(bodNaStene(s,cur),bodNaStene(s,a),M.stena,H,T,0,wallRoot);
+      // prvek
+      const grp=(e.t==='vyloha')?elVyloha(len):elDvere(len,e.t==='dvere2'?2:1);
+      const mid=bodNaStene(s,e.pos);
+      grp.position.set(mid[0],0,mid[1]); grp.rotation.y=s.ang;
+      grp.userData.el=e; grp.traverse(o=>{ if(o.isMesh){o.castShadow=true;o.receiveShadow=true;} });
+      elRoot.add(grp);
+      if(e.t!=='vyloha') stena(bodNaStene(s,a),bodNaStene(s,b),M.stena,H-2.25,T,2.25,wallRoot); // nadpraží
+      cur=b;
+    });
+    if(s.len-cur>0.01) stena(bodNaStene(s,cur),bodNaStene(s,s.len),M.stena,H,T,0,wallRoot);
+  });
+}
+function volnyNaStene(w,pos,len,ignore){
+  const s=STENY[w]; if(!s) return false;
+  if(pos-len/2<-0.01 || pos+len/2>s.len+0.01) return false;
+  return !stav.steny.some(e=>e!==ignore && e.w===w && Math.abs(e.pos-pos)<((e.len??ELTYPY[e.t].len)+len)/2-0.005);
+}
+/* stěna výklenku (N) i prosklený schod (VB) jsou nyní editovatelné stěny — staví je rebuildSteny() */
+
+/* ---------- sloupy (3×, 30×30 cm, 3,1 m od levé stěny) ---------- */
+[3.5, 7.1, 10.7].forEach(z=>{ const s=new THREE.Mesh(new THREE.BoxGeometry(0.13,H,0.13),M.sloup); s.position.set(3.1,H/2,z); s.castShadow=true; s.receiveShadow=true; room.add(s); });
+
+/* ===================================================================
+   PŘEDSAZENÁ STĚNA S OSVĚTLENÝMI NIKAMI (podél osy sloupů, líc do interiéru +x)
+   Schová 3 sloupy do plných pilířů; poslední pole (za posledním sloupem) plné.
+   =================================================================== */
+const nikaStenaRoot = new THREE.Group(); scene.add(nikaStenaRoot);
+const nikaSvetla = [];
+function postavNikaStenu(){
+  while(nikaStenaRoot.children.length) nikaStenaRoot.remove(nikaStenaRoot.children[0]);
+  nikaSvetla.length=0;
+  const cols=[3.5,7.1,10.7];   // sloupy 13×13 cm, x=3,1 (osa)
+  const xFace=3.58;            // líc stěny (do interiéru)
+  const dRecess=0.40;          // hloubka niky (40 cm — na ramínka)
+  const xNal=xFace-dRecess;    // zadní stěna niky = 3,18 (těsně před sloupem 3,165)
+  const dWall=0.58;            // celková hloubka konstrukce (schová sloup 13 cm za nikou)
+  const xBack=xFace-dWall;     // 3,00 (za sloupem)
+  const xMid=(xFace+xBack)/2, depthFull=dWall;
+  const wallTop=H-0.08;        // stěna končí 8 cm pod stropem → nahoře STÍNOVÁ SPÁRA
+  const zStart=1.9, zEnd=ROOM.hloubka;
+  const parapet=0.30, nadpr=2.45;          // otvor niky 0,30–2,45 m
+  const pierHalf=0.16;                       // pilíř 32 cm (sloup 13 + rám + OSB + panel)
+  const lic=M.travertin, vnitr=M.travertin;
+
+  // box líce (plné pole) v rozsahu z0..z1, do výšky wallTop
+  function plnePole(z0,z1){
+    if(z1-z0<0.005) return;
+    const b=new THREE.Mesh(new THREE.BoxGeometry(depthFull,wallTop,z1-z0),lic);
+    b.position.set(xMid,wallTop/2,(z0+z1)/2); b.castShadow=true; b.receiveShadow=true; nikaStenaRoot.add(b);
+  }
+  // nika v rozsahu z0..z1
+  function nika(z0,z1){
+    const w=z1-z0, zc=(z0+z1)/2;
+    // parapet (pod otvorem) a nadpraží (nad otvorem) — plná hloubka
+    const par=new THREE.Mesh(new THREE.BoxGeometry(depthFull,parapet,w),lic); par.position.set(xMid,parapet/2,zc); nikaStenaRoot.add(par);
+    const nad=new THREE.Mesh(new THREE.BoxGeometry(depthFull,wallTop-nadpr,w),lic); nad.position.set(xMid,(wallTop+nadpr)/2,zc); nikaStenaRoot.add(nad);
+    // záda niky
+    const zad=new THREE.Mesh(new THREE.BoxGeometry(xNal-xBack,nadpr-parapet,w),vnitr); zad.position.set((xNal+xBack)/2,(parapet+nadpr)/2,zc); nikaStenaRoot.add(zad);
+    nikaStenaRoot.traverse(o=>{ if(o.isMesh){o.castShadow=true;o.receiveShadow=true;} });
+    // police z masivního ořechu (horní třetina otvoru), přes celou šířku
+    const yShelf=parapet+(nadpr-parapet)*0.66;
+    const pol=new THREE.Mesh(new THREE.BoxGeometry(dRecess-0.02,0.04,w-0.04),M.orech);
+    pol.position.set(xNal+dRecess/2,yShelf,zc); pol.castShadow=true; nikaStenaRoot.add(pol);
+    // mosazná tyč pod policí, přes celou šířku + středová konzola
+    const yRod=yShelf-0.16;
+    const tyc=new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.014,w-0.06,12),M.mosaz);
+    tyc.rotation.x=Math.PI/2; tyc.position.set(xNal+dRecess*0.55,yRod,zc); nikaStenaRoot.add(tyc);
+    const konz=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.10,0.02),M.mosaz); konz.position.set(xNal+dRecess*0.55,yRod+0.05,zc); nikaStenaRoot.add(konz);
+    // oblečení na tyči (náznak)
+    const barvy=[0x2a2a30,0x8c7a5b,0xb8b3a8,0x6e4a3a,0x55585f];
+    const n=Math.max(2,Math.round(w/0.32));
+    for(let i=0;i<n;i++){ const o=new THREE.Mesh(new THREE.BoxGeometry(dRecess*0.5,0.55,0.05),
+        new THREE.MeshStandardMaterial({color:barvy[i%barvy.length],roughness:0.92}));
+      o.position.set(xNal+dRecess*0.55,yRod-0.32,z0+0.12+i*(w-0.24)/Math.max(1,n-1)); o.castShadow=true; nikaStenaRoot.add(o); }
+    // skrytý LED v horním lemu niky (svítí dolů) + pásek pod policí
+    const ledMat=new THREE.MeshStandardMaterial({color:0xffe8c6,emissive:0xffd9a8,emissiveIntensity:2.2});
+    const lemTop=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.02,w-0.06),ledMat); lemTop.position.set(xFace-0.04,nadpr-0.04,zc); nikaStenaRoot.add(lemTop);
+    const lemPol=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.012,w-0.08),ledMat); lemPol.position.set(xNal+dRecess*0.8,yShelf-0.03,zc); nikaStenaRoot.add(lemPol);
+    // měkké teplé světlo dovnitř niky
+    const sv=new THREE.PointLight(0xffd9a8,0,3.0,1.8); sv.position.set(xNal+0.2,nadpr-0.2,zc);
+    nikaStenaRoot.add(sv); nikaSvetla.push(sv);
+  }
+
+  // pilíře jen u sloupů; PRŮCHOD před 1. sloupem (1. nika zrušena) a STĚNA KONČÍ U POSLEDNÍHO SLOUPU
+  const solids=[];
+  cols.forEach(c=>solids.push([c-pierHalf,c+pierHalf]));
+  const wallStart = cols[0]-pierHalf, wallEnd = cols[2]+pierHalf;
+  // vykresli pevné zóny (pilíře u sloupů)
+  solids.forEach(s=>plnePole(s[0],s[1]));
+  // mezi pevnými zónami = JEDNA nika na pole (předěl jen tam, kde reálně stojí sloup) → 3 niky
+  for(let i=0;i<solids.length-1;i++){
+    const a=solids[i][1], b=solids[i+1][0]; const span=b-a;
+    if(span<0.4){ if(span>0.01) plnePole(a,b); continue; }
+    nika(a,b);
+  }
+  // ZADNÍ STRANA STĚNY: mosazné tyče na věšení (po celé délce, mezi pilíři)
+  const yRod2=1.75, xRod=xBack-0.16, barvy2=[0x2a2a30,0x8c7a5b,0xb8b3a8,0x6e4a3a,0x55585f,0x7c2730];
+  for(let i=0;i<solids.length-1;i++){
+    const a=solids[i][1], b=solids[i+1][0], L=b-a; if(L<0.4) continue;
+    const zc=(a+b)/2;
+    const tyc=new THREE.Mesh(new THREE.CylinderGeometry(0.016,0.016,L-0.06,12),M.mosaz);
+    tyc.rotation.x=Math.PI/2; tyc.position.set(xRod,yRod2,zc); nikaStenaRoot.add(tyc);
+    [a+0.05,b-0.05].forEach(z=>{ const k=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.022,0.022),M.mosaz);
+      k.position.set((xBack+xRod)/2,yRod2,z); nikaStenaRoot.add(k); });          // konzoly do stěny
+    const stred=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.022,0.022),M.mosaz); stred.position.set((xBack+xRod)/2,yRod2,zc); nikaStenaRoot.add(stred);
+    const n=Math.max(3,Math.round(L/0.30));
+    for(let j=0;j<n;j++){ const o=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.6,0.4),
+        new THREE.MeshStandardMaterial({color:barvy2[j%barvy2.length],roughness:0.92}));
+      o.position.set(xRod-0.03,yRod2-0.36,a+0.12+j*(L-0.24)/Math.max(1,n-1)); o.castShadow=true; nikaStenaRoot.add(o); }
+  }
+  // podsvícený sokl u podlahy + horní omývání stěny (ambient) — po délce stěny
+  const soklMat=new THREE.MeshStandardMaterial({color:0xffe8c6,emissive:0xffd9a8,emissiveIntensity:1.4});
+  const sokl=new THREE.Mesh(new THREE.BoxGeometry(0.015,0.05,wallEnd-wallStart),soklMat); sokl.position.set(xFace-0.02,0.06,(wallStart+wallEnd)/2); nikaStenaRoot.add(sokl);
+  const lemHorni=new THREE.Mesh(new THREE.BoxGeometry(0.015,0.04,wallEnd-wallStart),soklMat); lemHorni.position.set(xFace-0.02,wallTop-0.04,(wallStart+wallEnd)/2); nikaStenaRoot.add(lemHorni);
+}
+
+/* ---------- ALT: HŘEBEN — 3 kolmé stěny od levé zdi ke sloupům, mezi nimi 2 boxy (dle náčrtku) ---------- */
+function postavHreben(){
+  while(nikaStenaRoot.children.length) nikaStenaRoot.remove(nikaStenaRoot.children[0]);
+  nikaSvetla.length=0;
+  const cols=[3.5,7.1,10.7];
+  const xF=3.58, boxDepth=2.2, xBack=xF-boxDepth, tw=0.25;   // MĚLČÍ boxy 2,2 m; za nimi zůstane volná podlaha k levé zdi
+  const wallTop=H-0.08;
+  const led=new THREE.MeshStandardMaterial({color:0xffe8c6,emissive:0xffd9a8,emissiveIntensity:1.6});
+  const barvy=[0x2a2a30,0x8c7a5b,0xb8b3a8,0x6e4a3a,0x55585f,0x7c2730];
+  // zadní páteř spojující zuby (uzavírá boxy vzadu, drží konstrukci)
+  const spine=new THREE.Mesh(new THREE.BoxGeometry(tw,wallTop,cols[2]-cols[0]+tw),M.travertin);
+  spine.position.set(xBack,wallTop/2,(cols[0]+cols[2])/2); spine.castShadow=spine.receiveShadow=true; nikaStenaRoot.add(spine);
+  // 3 zuby (kolmé stěny) — líc travertin
+  cols.forEach(cz=>{
+    const w=new THREE.Mesh(new THREE.BoxGeometry(boxDepth,wallTop,tw),M.travertin);
+    w.position.set((xBack+xF)/2,wallTop/2,cz); w.castShadow=w.receiveShadow=true; nikaStenaRoot.add(w);
+  });
+  // 2 boxy: na obou lících tyč + oblečení + police + LED
+  for(let i=0;i<cols.length-1;i++){
+    [cols[i]+tw/2, cols[i+1]-tw/2].forEach((fz,side)=>{
+      const dir = side===0 ? 1 : -1, cx=(xBack+xF)/2, rodLen=boxDepth-0.4;
+      const tyc=new THREE.Mesh(new THREE.CylinderGeometry(0.016,0.016,rodLen,12),M.mosaz);
+      tyc.rotation.z=Math.PI/2; tyc.position.set(cx,1.55,fz+dir*0.07); nikaStenaRoot.add(tyc);
+      const pol=new THREE.Mesh(new THREE.BoxGeometry(rodLen,0.04,0.30),M.orech);
+      pol.position.set(cx,1.95,fz+dir*0.16); pol.castShadow=true; nikaStenaRoot.add(pol);
+      const l=new THREE.Mesh(new THREE.BoxGeometry(rodLen,0.02,0.02),led); l.position.set(cx,1.90,fz+dir*0.07); nikaStenaRoot.add(l);
+      for(let k=0;k<4;k++){ const o=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.55,0.36),
+        new THREE.MeshStandardMaterial({color:barvy[(k+i+side)%barvy.length],roughness:0.9}));
+        o.position.set(xBack+0.3+k*rodLen/3,1.22,fz+dir*0.07); o.castShadow=true; nikaStenaRoot.add(o); }
+    });
+    const sv=new THREE.PointLight(0xffd9a8,3,4.5,2); sv.position.set((xBack+xF)/2,2.4,(cols[i]+cols[i+1])/2);
+    nikaStenaRoot.add(sv); nikaSvetla.push(sv);
+  }
+  // podsvícený sokl u sloupové linie (líc do prodejny)
+  const soklMat=new THREE.MeshStandardMaterial({color:0xffe8c6,emissive:0xffd9a8,emissiveIntensity:1.4});
+  cols.forEach(cz=>{ const s=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.05,tw),soklMat); s.position.set(xF-0.03,0.06,cz); nikaStenaRoot.add(s); });
+  nikaStenaRoot.traverse(o=>{ if(o.isMesh){o.castShadow=true;o.receiveShadow=true;} });
+}
+
+// postavHreben();  // ODEBRÁNO 8.7.2026 na přání Frederika — pevné niky pryč, nika se teď řeší editorem (nastavitelná délka). Pro návrat odkomentuj (nebo postavNikaStenu() pro rovnou variantu).
+
+/* ---------- kazetový strop 60×120 (realistický: kazeta + T-profil 24 mm) ---------- */
+function stropTexFn(o){ // o = {kazeta, sum, sumA, profil, profilHi, stin}
+  const c=document.createElement('canvas'); c.width=240; c.height=120; const x=c.getContext('2d');
+  x.fillStyle=o.kazeta; x.fillRect(0,0,240,120);
+  // jemná struktura minerální kazety (tečkovaný vpich)
+  for(let i=0;i<420;i++){
+    x.fillStyle=`rgba(${o.sum},${(0.03+Math.random()*o.sumA).toFixed(3)})`;
+    x.fillRect(Math.random()*240, Math.random()*120, 1.4, 1.4);
+  }
+  // stín kazety u profilu (kazeta je zapuštěná)
+  x.strokeStyle=o.stin; x.lineWidth=7; x.strokeRect(3.5,3.5,233,113);
+  // T-profil (mírně zvýrazněný, ať je rastr čitelný i z dálky)
+  x.strokeStyle=o.profil; x.lineWidth=6; x.strokeRect(0,0,240,120);
+  // odlesk středu profilu (lesklý lak na T-liště)
+  x.strokeStyle=o.profilHi; x.lineWidth=2.5; x.strokeRect(1.2,1.2,237.6,117.6);
+  /* ShapeGeometry má UV v metrech → 1 dlaždice textury = 1,2 × 0,6 m (kazeta 120×60) */
+  const t=new THREE.CanvasTexture(c); t.wrapS=t.wrapT=THREE.RepeatWrapping; t.repeat.set(1/1.2, 1/0.6); t.anisotropy=16; t.colorSpace=THREE.SRGBColorSpace; return t;
+}
+const stropBila  = stropTexFn({ kazeta:'#f2f3f4', sum:'90,92,96',    sumA:0.06, profil:'#cfd2d6', profilHi:'#ffffff', stin:'#e0e2e5' });
+const stropCerna = stropTexFn({ kazeta:'#0f0f11', sum:'255,255,255', sumA:0.05, profil:'#56565f', profilHi:'#8e8e9a', stin:'#050507' });
+const strop = new THREE.Mesh(new THREE.ShapeGeometry(shapeFromPts(obrys)),
+   new THREE.MeshStandardMaterial({ map:stropBila, color:0xffffff, roughness:1.0, side:THREE.DoubleSide }));
+strop.rotation.x = Math.PI/2; strop.position.y=H; room.add(strop); strop.visible=false;
+
+/* ===================================================================
+   KATALOG OBJEKTŮ (vybavení prodejny) — procedurální modely
+   =================================================================== */
+function shadowAll(g){ g.traverse(o=>{ if(o.isMesh){ o.castShadow=true; o.receiveShadow=true; } }); return g; }
+const OBLEKY = [0x23232a, 0x8c7a5b, 0xb8b3a8, 0x5d6168, 0x6e4a3a];
+/* barvy čalounění (gauče, křesla, taburety) */
+const BARVY = [
+  { n:'Burgundy',  c:0x7c2730 },
+  { n:'Antracit',  c:0x35353a },
+  { n:'Krémová',   c:0xcfc4b0 },
+  { n:'Lahvová',   c:0x2e4636 },
+  { n:'Camel',     c:0x9a7b4f },
+  { n:'Sv. šedá',  c:0x8d8d92 },
+];
+function sofaMat(c){ return new THREE.MeshStandardMaterial({ color:c ?? 0x35353a, roughness:0.9 }); }
+function barvaObj(o){ const def=TYPY[o.t]; return BARVY[(o.c ?? def.defC ?? 0)]?.c; }
+/* vestavěná nika (š 1,6 × hl 0,45 × v 2,3) — police / tyč / kombinace, s LED podsvícením */
+function nika(o){
+  const g=new THREE.Group();
+  const W=Math.max(0.6,Math.min(4,o.w||1.6)), D=0.45, V=2.3, R=0.08;
+  // OBLOŽENÍ TRAVERTINEM (jako pevná nika-stěna): líc/boky/strop/sokl travertin, police ořech, tyč mosaz
+  const zad=new THREE.Mesh(new THREE.BoxGeometry(W-2*R,V-2*R,0.03),M.travertin); zad.position.set(0,V/2,-D/2+0.015); g.add(zad);
+  [-1,1].forEach(s=>{ const bok=new THREE.Mesh(new THREE.BoxGeometry(R,V,D),M.travertin); bok.position.set(s*(W/2-R/2),V/2,0); g.add(bok); });
+  const top=new THREE.Mesh(new THREE.BoxGeometry(W,R,D),M.travertin); top.position.set(0,V-R/2,0); g.add(top);
+  const sokl=new THREE.Mesh(new THREE.BoxGeometry(W-2*R,0.12,D-0.06),M.travertin); sokl.position.set(0,0.06,0); g.add(sokl);
+  const ledMat=new THREE.MeshStandardMaterial({ color:0xffd9a8, emissive:0xffd9a8, emissiveIntensity:1.5 });
+  const led=new THREE.Mesh(new THREE.BoxGeometry(W-2*R-0.04,0.012,0.025),ledMat); led.position.set(0,V-R-0.01,D/2-0.1); g.add(led);
+  (o.police||[]).forEach(y=>{ const p=new THREE.Mesh(new THREE.BoxGeometry(W-2*R-0.02,0.035,D-0.1),M.orech); p.position.set(0,y,0.01); g.add(p); });
+  if(o.tyc){ const t=new THREE.Mesh(new THREE.CylinderGeometry(0.013,0.013,W-2*R-0.04,12),M.mosaz);
+    t.rotation.z=Math.PI/2; t.position.set(0,o.tyc,0.02); g.add(t);
+    obleceni(g,o.tyc,W-2*R-0.2,Math.max(3,Math.round((W-0.4)/0.45)),0.02); }
+  return shadowAll(g);
+}
+/* NIKA-OSTROV: souvislý OBOUSTRANNÝ blok niky (jeden kus) — niky na obou lících, sdílené příčky, bez spár.
+   o.w = délka běhu (podél lokální osy X); rotací se orientuje. Travertin + police ořech + tyč mosaz + LED. */
+function nikaOstrov(o){
+  const g=new THREE.Group();
+  const W=Math.max(1.2,Math.min(6,o.w||3.6)), V=2.3, R=0.08;
+  const ts=0.16, df=0.44, Dtot=2*df+ts;              // páteř + hloubka niky na každou stranu
+  const n=Math.max(2,Math.min(6,Math.round(W/1.2))), bw=W/n, tf=0.10;   // pole + příčka
+  const barvy=[0x2a2a30,0x8c7a5b,0xb8b3a8,0x6e4a3a,0x55585f,0x7c2730];
+  const ledMat=new THREE.MeshStandardMaterial({color:0xffe8c6,emissive:0xffd9a8,emissiveIntensity:1.5});
+  // sdílená páteř (uzavírá zad obou stran) + horní lem + sokl přes celý blok
+  const spine=new THREE.Mesh(new THREE.BoxGeometry(W,V-2*R,ts),M.travertin); spine.position.set(0,V/2,0); g.add(spine);
+  const top=new THREE.Mesh(new THREE.BoxGeometry(W,R,Dtot),M.travertin); top.position.set(0,V-R/2,0); g.add(top);
+  const sokl=new THREE.Mesh(new THREE.BoxGeometry(W,0.12,Dtot),M.travertin); sokl.position.set(0,0.06,0); g.add(sokl);
+  // příčky (n+1) přes celou hloubku — sdílené mezi sousedními poli (žádné zdvojení)
+  for(let i=0;i<=n;i++){ const x=-W/2+i*bw;
+    const fin=new THREE.Mesh(new THREE.BoxGeometry(tf,V,Dtot),M.travertin); fin.position.set(x,V/2,0); g.add(fin); }
+  // pole na OBOU stranách: police ořech + tyč mosaz + LED + náznak oblečení
+  for(let i=0;i<n;i++){ const cx=-W/2+(i+0.5)*bw;
+    [1,-1].forEach(side=>{
+      const zShelf=side*(ts/2+df/2), zRod=side*(ts/2+df*0.55), zLed=side*(ts/2+0.04);
+      const pol=new THREE.Mesh(new THREE.BoxGeometry(bw-tf-0.03,0.035,df-0.06),M.orech); pol.position.set(cx,1.95,zShelf); g.add(pol);
+      const led=new THREE.Mesh(new THREE.BoxGeometry(bw-tf-0.05,0.02,0.02),ledMat); led.position.set(cx,1.90,zLed); g.add(led);
+      const tyc=new THREE.Mesh(new THREE.CylinderGeometry(0.014,0.014,bw-tf-0.05,12),M.mosaz); tyc.rotation.z=Math.PI/2; tyc.position.set(cx,1.55,zRod); g.add(tyc);
+      const nk=Math.max(2,Math.round((bw-0.2)/0.34)), innerW=bw-tf-0.16;
+      for(let k=0;k<nk;k++){ const gx=cx-innerW/2 + k*innerW/Math.max(1,nk-1);
+        const gm=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.6,0.36),new THREE.MeshStandardMaterial({color:barvy[(k+i+(side>0?0:3))%barvy.length],roughness:0.9}));
+        gm.position.set(gx,1.22,zRod); g.add(gm); }
+    });
+  }
+  return shadowAll(g);
+}
+function obleceni(g, y, w, n, z0=0){
+  for(let i=0;i<n;i++){
+    const c=new THREE.MeshStandardMaterial({ color:OBLEKY[i%OBLEKY.length], roughness:0.92 });
+    const o=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.62,0.42),c);
+    o.position.set(-w/2+0.12+i*(w-0.24)/Math.max(1,n-1), y-0.34, z0); g.add(o);
+    const ram=new THREE.Mesh(new THREE.CylinderGeometry(0.004,0.004,0.18,6),M.kov);
+    ram.rotation.z=Math.PI/2; ram.position.set(o.position.x, y-0.015, z0); g.add(ram);
+  }
+}
+const TYPY = {
+  regal: { nazev:'Regál nástěnný', ic:'📚', w:1.2, d:0.42,
+    vyrob(){ const g=new THREE.Group();
+      [-0.58,0.58].forEach(x=>{ const b=new THREE.Mesh(new THREE.BoxGeometry(0.04,2.0,0.4),M.cernyMat); b.position.set(x,1.0,0); g.add(b); });
+      const zad=new THREE.Mesh(new THREE.BoxGeometry(1.2,2.0,0.025),M.cernyMat); zad.position.set(0,1.0,-0.19); g.add(zad);
+      [0.25,0.75,1.25,1.75].forEach(y=>{ const p=new THREE.Mesh(new THREE.BoxGeometry(1.12,0.035,0.36),M.drevo); p.position.set(0,y,0); g.add(p); });
+      const tyc=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,1.1,10),M.zlato); tyc.rotation.z=Math.PI/2; tyc.position.set(0,1.55,0.1); g.add(tyc);
+      obleceni(g,1.55,1.1,4,0.1);
+      return shadowAll(g); } },
+  gondola: { nazev:'Gondola středová', ic:'🗄️', w:1.5, d:0.9,
+    vyrob(){ const g=new THREE.Group();
+      const sokl=new THREE.Mesh(new THREE.BoxGeometry(1.5,0.12,0.9),M.cernyMat); sokl.position.y=0.06; g.add(sokl);
+      const stred=new THREE.Mesh(new THREE.BoxGeometry(1.5,1.35,0.06),M.cernyMat); stred.position.y=0.74; g.add(stred);
+      [0.45,0.85,1.25].forEach(y=>[-1,1].forEach(s=>{
+        const p=new THREE.Mesh(new THREE.BoxGeometry(1.42,0.03,0.38),M.drevo); p.position.set(0,y,s*0.23); g.add(p); }));
+      [-1,1].forEach(s=>{ const bok=new THREE.Mesh(new THREE.BoxGeometry(0.05,1.35,0.86),M.cernyMat); bok.position.set(s*0.725,0.74,0); g.add(bok); });
+      return shadowAll(g); } },
+  stenka: { nazev:'Stěnka vyzděná 1,2×2 m', ic:'🧱', w:1.2, d:0.15,
+    vyrob(){ const g=new THREE.Group();
+      const zed=new THREE.Mesh(new THREE.BoxGeometry(1.2,2.0,0.15),M.stena); zed.position.y=1.0; g.add(zed);
+      return shadowAll(g); } },
+  stender: { nazev:'Štendr na oblečení', ic:'👗', w:1.3, d:0.55,
+    vyrob(){ const g=new THREE.Group();
+      [-0.6,0.6].forEach(x=>{ const n=new THREE.Mesh(new THREE.BoxGeometry(0.04,1.5,0.04),M.cernyKov); n.position.set(x,0.75,0); g.add(n);
+        const pat=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.04,0.5),M.cernyKov); pat.position.set(x,0.02,0); g.add(pat); });
+      const tyc=new THREE.Mesh(new THREE.CylinderGeometry(0.015,0.015,1.24,10),M.cernyKov); tyc.rotation.z=Math.PI/2; tyc.position.y=1.48; g.add(tyc);
+      obleceni(g,1.48,1.2,5);
+      return shadowAll(g); } },
+  kabinka: { nazev:'Zkušební kabinka', ic:'🚪', w:1.05, d:1.05,
+    vyrob(){ const g=new THREE.Group(); const stMat=new THREE.MeshStandardMaterial({color:0x2b2b2e,roughness:0.8});
+      const zad=new THREE.Mesh(new THREE.BoxGeometry(1.05,2.25,0.04),stMat); zad.position.set(0,1.125,-0.5); g.add(zad);
+      [-1,1].forEach(s=>{ const bok=new THREE.Mesh(new THREE.BoxGeometry(0.04,2.25,1.0),stMat); bok.position.set(s*0.5,1.125,0); g.add(bok); });
+      const tyc=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,1.0,10),M.cernyKov); tyc.rotation.z=Math.PI/2; tyc.position.set(0,2.1,0.48); g.add(tyc);
+      const zaclona=(()=>{ const seg=24, geo=new THREE.PlaneGeometry(0.75,1.95,seg,1);
+        const pos=geo.attributes.position; for(let i=0;i<pos.count;i++){ pos.setZ(i, Math.sin(pos.getX(i)*18)*0.035); }
+        geo.computeVertexNormals();
+        return new THREE.Mesh(geo,new THREE.MeshStandardMaterial({color:0x4a4648,roughness:1,side:THREE.DoubleSide})); })();
+      zaclona.position.set(-0.13,1.12,0.48); g.add(zaclona);
+      const zrc=new THREE.Mesh(new THREE.PlaneGeometry(0.5,1.6),M.zrcadlo); zrc.position.set(0,1.15,-0.47); g.add(zrc);
+      return shadowAll(g); } },
+  nikaPolice: { nazev:'Nika s policemi', ic:'🗃️', w:1.6, d:0.45, resize:[0.6,4],
+    vyrob(c,o){ return nika({ police:[0.45,0.9,1.35,1.8], w:o&&o.w }); } },
+  nikaTyc: { nazev:'Nika s tyčí', ic:'🪝', w:1.6, d:0.45, resize:[0.6,4],
+    vyrob(c,o){ return nika({ tyc:1.75, police:[1.95], w:o&&o.w }); } },
+  nikaKombi: { nazev:'Nika kombinovaná', ic:'🧥', w:1.6, d:0.45, resize:[0.6,4],
+    vyrob(c,o){ return nika({ tyc:1.78, police:[1.98,0.45,0.85], w:o&&o.w }); } },
+  nikaOstrov: { nazev:'Nika-ostrov (oboustranná, souvislá)', ic:'🏝️', w:3.6, d:1.04, resize:[1.2,6],
+    vyrob(c,o){ return nikaOstrov({ w:o&&o.w }); } },
+  logo: { nazev:'Logo podsvícené', ic:'🔆', w:1.2, d:0.06,
+    vyrob(){ const g=new THREE.Group(); const W=1.2, H=W/(window.AMANDE_LOGO_AR||6), y=1.9;
+      const glow=new THREE.Mesh(new THREE.PlaneGeometry(W*1.3,H*2.8),
+        new THREE.MeshBasicMaterial({color:0xffe6b8,transparent:true,opacity:0.16,depthWrite:false})); glow.position.set(0,y,-0.015); g.add(glow);
+      const mat = logoTex
+        ? new THREE.MeshStandardMaterial({map:logoTex,emissive:0xffe9c2,emissiveMap:logoTex,emissiveIntensity:1.7,transparent:true,roughness:0.5,side:THREE.DoubleSide})
+        : new THREE.MeshStandardMaterial({color:0xffe9c2,emissive:0xffe9c2,emissiveIntensity:1.5,side:THREE.DoubleSide});
+      const plane=new THREE.Mesh(new THREE.PlaneGeometry(W,H),mat); plane.position.set(0,y,0); g.add(plane);
+      const pl=new THREE.PointLight(0xffe6b8,2.5,3.5,2); pl.position.set(0,y,0.35); g.add(pl);
+      return g; } },
+  pult: { nazev:'Pokladna U + dělicí stěna (logo/zrcadlo)', ic:'🛎️', w:1.8, d:1.3,
+    vyrob(){ const g=new THREE.Group();
+      const W=1.6, HK=0.9, DK=0.05, t=0.10, rim=0.25;
+      const D=0.6, Dl=1.0;                          // levý bok krátký, pravý bok delší
+      const HW=2.2, tw=0.14, Ww=1.4, zW=-D/2+Dl;    // stěna navazuje na konec delšího (pravého) boku
+      const xW=W/2-Ww/2;                            // pravý konec stěny lícuje s pravým bokem pultu
+      const ledMat=new THREE.MeshStandardMaterial({color:0xffe8c6,emissive:0xffd9a8,emissiveIntensity:1.4});
+      // U pult: čelo (-Z, k zákazníkům) + krátký levý bok + delší pravý bok, otevřené dozadu (kde stojí obsluha)
+      const front=new THREE.Mesh(new THREE.BoxGeometry(W,HK,t),M.travertin); front.position.set(0,HK/2,-D/2+t/2); g.add(front);
+      const left =new THREE.Mesh(new THREE.BoxGeometry(t,HK,D),M.travertin); left.position.set(-W/2+t/2,HK/2,0); g.add(left);
+      const right=new THREE.Mesh(new THREE.BoxGeometry(t,HK,Dl),M.travertin); right.position.set(W/2-t/2,HK/2,-D/2+Dl/2); g.add(right);
+      // ořechová deska – lem
+      const dF=new THREE.Mesh(new THREE.BoxGeometry(W+0.04,DK,rim),M.orech); dF.position.set(0,HK+DK/2,-D/2+rim/2); g.add(dF);
+      const dL=new THREE.Mesh(new THREE.BoxGeometry(rim,DK,D+0.04),M.orech); dL.position.set(-W/2+rim/2,HK+DK/2,0); g.add(dL);
+      const dR=new THREE.Mesh(new THREE.BoxGeometry(rim,DK,Dl+0.04),M.orech); dR.position.set(W/2-rim/2,HK+DK/2,-D/2+Dl/2); g.add(dR);
+      // podsvícený sokl pultu
+      const sF=new THREE.Mesh(new THREE.BoxGeometry(W-0.06,0.03,0.02),ledMat); sF.position.set(0,0.05,-D/2-0.006); g.add(sF);
+      const sL=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.03,D-0.06),ledMat); sL.position.set(-W/2-0.006,0.05,0); g.add(sL);
+      const sR=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.03,Dl-0.06),ledMat); sR.position.set(W/2+0.006,0.05,-D/2+Dl/2); g.add(sR);
+      // DĚLICÍ STĚNA (2,2 m) navazuje na pravý bok, vede napříč za záda obsluhy + podsvícený sokl
+      const wall=new THREE.Mesh(new THREE.BoxGeometry(Ww,HW,tw),M.travertin); wall.position.set(xW,HW/2,zW); g.add(wall);
+      const sW=new THREE.Mesh(new THREE.BoxGeometry(Ww-0.06,0.03,0.02),ledMat); sW.position.set(xW,0.05,zW-tw/2-0.006); g.add(sW);
+      shadowAll(g);
+      // LOGO ČERNÉ na přední straně stěny (k zákazníkům, -Z)
+      const LW=1.15, LH=LW/(window.AMANDE_LOGO_AR||6), ly=1.6, lz=zW-tw/2-0.012;
+      const lmat = logoTex
+        ? new THREE.MeshStandardMaterial({color:0x0a0a0a,map:logoTex,transparent:true,alphaTest:0.5,roughness:0.6,metalness:0,side:THREE.DoubleSide})
+        : new THREE.MeshStandardMaterial({color:0x0a0a0a,side:THREE.DoubleSide});
+      const lg=new THREE.Mesh(new THREE.PlaneGeometry(LW,LH),lmat); lg.position.set(xW,ly,lz); lg.rotation.y=Math.PI; g.add(lg);
+      // ZRCADLO na zadní straně stěny (+Z), mosazný rám
+      const ram=new THREE.Mesh(new THREE.PlaneGeometry(1.06,1.66),M.zlato); ram.position.set(xW,1.25,zW+tw/2+0.002); g.add(ram);
+      const mir=new THREE.Mesh(new THREE.PlaneGeometry(1.0,1.6),M.zrcadlo); mir.position.set(xW,1.25,zW+tw/2+0.014); g.add(mir);
+      return g; } },
+  pultdl: { nazev:'Pult rovný dlouhý (2,3 m)', ic:'🛎️', w:2.3, d:0.6,
+    vyrob(){ const g=new THREE.Group(), L=2.3, dep=0.6, HK=0.9, DK=0.05;
+      const led=new THREE.MeshStandardMaterial({color:0xffe8c6,emissive:0xffd9a8,emissiveIntensity:1.4});
+      const b=new THREE.Mesh(new THREE.BoxGeometry(L,HK,dep),M.travertin); b.position.set(0,HK/2,0); g.add(b);
+      const dsk=new THREE.Mesh(new THREE.BoxGeometry(L+0.05,DK,dep+0.05),M.orech); dsk.position.set(0,HK+DK/2,0); g.add(dsk);
+      const s1=new THREE.Mesh(new THREE.BoxGeometry(L,0.04,0.02),led); s1.position.set(0,0.05,-dep/2-0.006); g.add(s1);
+      const s2=new THREE.Mesh(new THREE.BoxGeometry(L,0.04,0.02),led); s2.position.set(0,0.05,dep/2+0.006); g.add(s2);
+      shadowAll(g); return g; } },
+  pultkr: { nazev:'Pult rovný krátký (1,55 m)', ic:'🛎️', w:1.55, d:0.6,
+    vyrob(){ const g=new THREE.Group(), L=1.55, dep=0.6, HK=0.9, DK=0.05;
+      const led=new THREE.MeshStandardMaterial({color:0xffe8c6,emissive:0xffd9a8,emissiveIntensity:1.4});
+      const b=new THREE.Mesh(new THREE.BoxGeometry(L,HK,dep),M.travertin); b.position.set(0,HK/2,0); g.add(b);
+      const dsk=new THREE.Mesh(new THREE.BoxGeometry(L+0.05,DK,dep+0.05),M.orech); dsk.position.set(0,HK+DK/2,0); g.add(dsk);
+      const s1=new THREE.Mesh(new THREE.BoxGeometry(L,0.04,0.02),led); s1.position.set(0,0.05,-dep/2-0.006); g.add(s1);
+      const s2=new THREE.Mesh(new THREE.BoxGeometry(L,0.04,0.02),led); s2.position.set(0,0.05,dep/2+0.006); g.add(s2);
+      shadowAll(g); return g; } },
+  gauc: { nazev:'Gauč 2-sed', ic:'🛋️', w:1.9, d:0.8, barvy:true, defC:0,
+    vyrob(c){ const g=new THREE.Group(); const m=sofaMat(c);
+      const sed=new THREE.Mesh(new THREE.BoxGeometry(1.9,0.42,0.8),m); sed.position.y=0.32; g.add(sed);
+      const op=new THREE.Mesh(new THREE.BoxGeometry(1.9,0.55,0.16),m); op.position.set(0,0.6,-0.32); g.add(op);
+      [-0.95,0.95].forEach(dx=>{ const a=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.5,0.8),m); a.position.set(dx,0.4,0); g.add(a); });
+      return shadowAll(g); } },
+  gauc3: { nazev:'Gauč 3-sed', ic:'🛋️', w:2.6, d:0.92, barvy:true, defC:1,
+    vyrob(c){ const g=new THREE.Group(); const m=sofaMat(c);
+      const sed=new THREE.Mesh(new THREE.BoxGeometry(2.6,0.4,0.92),m); sed.position.y=0.34; g.add(sed);
+      const op=new THREE.Mesh(new THREE.BoxGeometry(2.6,0.6,0.18),m); op.position.set(0,0.66,-0.37); g.add(op);
+      [-1.3,1.3].forEach(dx=>{ const a=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.56,0.92),m); a.position.set(dx,0.42,0); g.add(a); });
+      [-0.8,0,0.8].forEach(dx=>{ const p=new THREE.Mesh(new THREE.BoxGeometry(0.74,0.34,0.14),m); p.position.set(dx,0.72,-0.26); p.rotation.x=-0.1; g.add(p); });
+      [[-1.2,-0.38],[1.2,-0.38],[-1.2,0.38],[1.2,0.38]].forEach(([x,z])=>{
+        const n=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.016,0.14,8),M.cernyKov); n.position.set(x,0.07,z); g.add(n); });
+      return shadowAll(g); } },
+  gaucRoh: { nazev:'Gauč rohový (L)', ic:'🛋️', w:2.5, d:2.3, barvy:true, defC:1,
+    vyrob(c){ const g=new THREE.Group(); const m=sofaMat(c);
+      const sedA=new THREE.Mesh(new THREE.BoxGeometry(2.5,0.4,0.95),m); sedA.position.y=0.34; g.add(sedA);
+      const sedB=new THREE.Mesh(new THREE.BoxGeometry(0.95,0.4,1.35),m); sedB.position.set(0.775,0.34,1.15); g.add(sedB);
+      const opA=new THREE.Mesh(new THREE.BoxGeometry(2.5,0.62,0.18),m); opA.position.set(0,0.67,-0.385); g.add(opA);
+      const opB=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.62,2.3),m); opB.position.set(1.16,0.67,0.575); g.add(opB);
+      const aruka=new THREE.Mesh(new THREE.BoxGeometry(0.18,0.56,0.95),m); aruka.position.set(-1.16,0.42,0); g.add(aruka);
+      [[-0.7,-0.27,0],[0.1,-0.27,0],[0.78,0.7,1],[0.78,1.45,1]].forEach(([a,b,sm])=>{
+        const p=new THREE.Mesh(new THREE.BoxGeometry(sm?0.14:0.7,0.34,sm?0.7:0.14),m);
+        p.position.set(sm?0.99:a, 0.73, sm?b:-0.27); g.add(p); });
+      return shadowAll(g); } },
+  kreslo: { nazev:'Křeslo', ic:'🪑', w:0.85, d:0.85, barvy:true, defC:1,
+    vyrob(c){ const g=new THREE.Group(); const m=sofaMat(c);
+      const sed=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.32,0.75),m); sed.position.y=0.34; g.add(sed);
+      const op=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.55,0.14),m); op.position.set(0,0.72,-0.3); op.rotation.x=-0.12; g.add(op);
+      [-0.36,0.36].forEach(x=>{ const a=new THREE.Mesh(new THREE.BoxGeometry(0.1,0.42,0.7),m); a.position.set(x,0.48,0); g.add(a); });
+      [[-0.32,-0.3],[0.32,-0.3],[-0.32,0.3],[0.32,0.3]].forEach(([x,z])=>{
+        const n=new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.014,0.18,8),M.zlato); n.position.set(x,0.09,z); g.add(n); });
+      return shadowAll(g); } },
+  taburet: { nazev:'Taburet', ic:'🥁', w:0.5, d:0.5, barvy:true, defC:4,
+    vyrob(c){ const g=new THREE.Group();
+      const t=new THREE.Mesh(new THREE.CylinderGeometry(0.25,0.25,0.4,24),sofaMat(c)); t.position.y=0.22; g.add(t);
+      const z=new THREE.Mesh(new THREE.CylinderGeometry(0.255,0.255,0.03,24),M.zlato); z.position.y=0.015; g.add(z);
+      return shadowAll(g); } },
+  figurina: { nazev:'Figurína', ic:'🕴️', w:0.45, d:0.45,
+    vyrob(){ const g=new THREE.Group(); const mat=new THREE.MeshStandardMaterial({color:0x121214,roughness:0.4});
+      const pod=new THREE.Mesh(new THREE.CylinderGeometry(0.18,0.2,0.05,24),M.kov); pod.position.y=0.02; g.add(pod);
+      const tyc=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.025,0.7,12),M.kov); tyc.position.y=0.37; g.add(tyc);
+      const boky=new THREE.Mesh(new THREE.SphereGeometry(0.16,20,16),mat); boky.scale.set(1,0.7,0.6); boky.position.y=0.78; g.add(boky);
+      const trup=new THREE.Mesh(new THREE.CylinderGeometry(0.15,0.2,0.55,20),mat); trup.position.y=1.12; g.add(trup);
+      const ram=new THREE.Mesh(new THREE.SphereGeometry(0.21,20,16),mat); ram.scale.set(1,0.45,0.55); ram.position.y=1.42; g.add(ram);
+      return shadowAll(g); } },
+  zrcadlo: { nazev:'Zrcadlo stojací', ic:'🪞', w:0.66, d:0.3,
+    vyrob(){ const g=new THREE.Group();
+      const ram=new THREE.Mesh(new THREE.BoxGeometry(0.66,1.85,0.04),M.zlato); ram.position.y=0.95; ram.rotation.x=-0.06; g.add(ram);
+      const plocha=new THREE.Mesh(new THREE.PlaneGeometry(0.58,1.77),M.zrcadlo); plocha.position.set(0,0.95,0.025); plocha.rotation.x=-0.06; g.add(plocha);
+      const noha=new THREE.Mesh(new THREE.BoxGeometry(0.5,0.03,0.3),M.cernyMat); noha.position.y=0.015; g.add(noha);
+      return shadowAll(g); } },
+  rostlina: { nazev:'Rostlina', ic:'🪴', w:0.5, d:0.5,
+    vyrob(){ const g=new THREE.Group();
+      const kv=new THREE.Mesh(new THREE.CylinderGeometry(0.16,0.13,0.35,18),M.cernyMat); kv.position.y=0.175; g.add(kv);
+      const km=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.03,0.5,8),new THREE.MeshStandardMaterial({color:0x4a3b28,roughness:1})); km.position.y=0.55; g.add(km);
+      [[0,1.0,0,.34],[.14,.86,.08,.24],[-.13,.9,-.1,.27],[.06,1.12,-.12,.22]].forEach(([x,y,z,r])=>{
+        const l=new THREE.Mesh(new THREE.SphereGeometry(r,12,10),M.zelen); l.scale.y=1.25; l.position.set(x,y,z); g.add(l); });
+      return shadowAll(g); } },
+  stolek: { nazev:'Konferenční stolek', ic:'🫖', w:0.7, d:0.7,
+    vyrob(){ const g=new THREE.Group();
+      const d=new THREE.Mesh(new THREE.CylinderGeometry(0.35,0.35,0.035,28),M.cernyMat); d.position.y=0.43; g.add(d);
+      [0,2.094,4.189].forEach(a=>{ const n=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,0.42,8),M.zlato);
+        n.position.set(Math.cos(a)*0.26,0.21,Math.sin(a)*0.26); g.add(n); });
+      return shadowAll(g); } },
+  stul: { nazev:'Prezentační stůl', ic:'🧺', w:1.2, d:0.8,
+    vyrob(){ const g=new THREE.Group();
+      const d=new THREE.Mesh(new THREE.BoxGeometry(1.2,0.04,0.8),M.drevoSv); d.position.y=0.76; g.add(d);
+      const d2=new THREE.Mesh(new THREE.BoxGeometry(0.9,0.04,0.6),M.drevoSv); d2.position.y=0.4; g.add(d2);
+      [[-0.55,-0.35],[0.55,-0.35],[-0.55,0.35],[0.55,0.35]].forEach(([x,z])=>{
+        const n=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.76,0.04),M.cernyKov); n.position.set(x,0.38,z); g.add(n); });
+      return shadowAll(g); } },
+};
+
+/* ===================================================================
+   SVÍTIDLA — SG20 E 48V Magnetic Track (dle katalogu, ověřeno)
+   =================================================================== */
+const SVITIDLA = {
+  spot:    { nazev:'Bodovka',        kod:'SG20-E45-12SA', w:'12 W · Ø45 · 24°',  ic:'🔦', beam:24,  base:42, aim:true },
+  zoom:    { nazev:'Zoom bodovka',   kod:'SG20-E65-18SZ', w:'18 W · Ø65 · 10–55°', ic:'🎯', beam:36, base:55, aim:true, zoom:true },
+  grille:  { nazev:'Grille modul',   kod:'SG20-E220-12G', w:'12 W · 220 mm · 24°', ic:'▦', beam:24, base:30 },
+  diff:    { nazev:'Difuzní modul',  kod:'SG20-E220-12D', w:'12 W · 220 mm · 60°', ic:'▬', beam:60, base:34 },
+  flood:   { nazev:'Flood / washer', kod:'SG20-E600-24F', w:'24 W · 600 mm · 120°', ic:'🌫️', beam:120, base:46 },
+  pendant: { nazev:'Závěsná koule',  kod:'SG20-E100-7BP', w:'7 W · Ø100 · 240°', ic:'💡', beam:240, base:9, drop:true },
+};
+function kelvinRGB(k){
+  k=Math.max(1500,Math.min(8000,k))/100; let r,g,b;
+  r = k<=66 ? 255 : 329.698727446*Math.pow(k-60,-0.1332047592);
+  g = k<=66 ? 99.4708025861*Math.log(k)-161.1195681661 : 288.1221695283*Math.pow(k-60,-0.0755148492);
+  b = k>=66 ? 255 : (k<=19 ? 0 : 138.5177312231*Math.log(k-10)-305.0447927307);
+  const c=(v)=>Math.max(0,Math.min(255,v))/255;
+  return new THREE.Color(c(r),c(g),c(b));
+}
+
+/* ===================================================================
+   STAV + scéna editoru
+   =================================================================== */
+const KLIC='amande3d_v18';  // v18 = nika-ostrovy (oboustranné souvislé bloky) místo pevných nik; 2 ostrovy ve středu, vlevo+vpředu volno
+const stav = {
+  cine:true,
+  /* track: ori 'Z'=podélně (po hloubce) | 'X'=příčně (po šířce); a = kolmá souřadnice; od/do = rozsah podél */
+  tracks:[{ori:'Z',a:2.5,od:1.2,do:17.3},{ori:'Z',a:6.0,od:1.2,do:17.3}],
+  objekty:[],          // {t,x,z,r,c?}
+  svetla:[],           // {t,tr,s,tx,tz,k,dim,ang,drop} — s = pozice podél tracku (m, absolutně v ose)
+  steny:[],            // {t,w,pos,len} — výlohy a dveře na stěnách
+  podlaha:new Uint8Array(FC*FR),
+  denni:1.0, gmult:1.0,
+};
+function defaultSteny(){ return [   // dle naměřeného půdorysu
+  {t:'vyloha', w:'C',  pos:1.8,   len:3.4},   // horní výloha 3,4 m
+  {t:'vyloha', w:'P',  pos:2.7,   len:3.0},   // pravá výloha 3,0 m (1,2 m od rohu)
+  {t:'vyloha', w:'VB', pos:0.9,   len:1.8},   // prosklený schod 1,8 m (sklo do stropu)
+  {t:'dvere1', w:'N',  pos:4.7,   len:1.0},   // skleněné dveře 1,0 m ve výklenku
+  {t:'dvere1', w:'Z',  pos:1.075, len:1.0},   // spodní dveře 1 (0,6 m od levé)
+  {t:'dvere1', w:'Z',  pos:5.025, len:1.0},   // spodní dveře 2 (3,0 m mezera)
+]; }
+const objRoot = new THREE.Group(); scene.add(objRoot);
+const trackRoot = new THREE.Group(); scene.add(trackRoot);
+const svRoot = new THREE.Group(); scene.add(svRoot);
+const liveSv = []; // {data, grp, light, target, emis[]}
+
+function vyrobObjekt(o){
+  const g = TYPY[o.t].vyrob(barvaObj(o), o);
+  g.userData.obj = o;
+  g.position.set(o.x,0,o.z); g.rotation.y = o.r;
+  objRoot.add(g); return g;
+}
+function rebuildObjekty(){
+  while(objRoot.children.length) objRoot.remove(objRoot.children[0]);
+  stav.objekty.forEach(o=>vyrobObjekt(o));
+}
+
+/* ---------- tracky (orientace podélně/příčně, volná délka dle dodavatele) ---------- */
+const TR_DMIN=0.6; // minimální délka tracku (nejkratší profil)
+const trk=(i)=>stav.tracks[i]||{ori:'Z',a:CX,od:1.2,do:17.3};
+const trOsy=(t)=> t.ori==='X'
+  ? { aMin:0.3, aMax:ROOM.hloubka-0.3, sMin:0.3, sMax:ROOM.celo-0.3, aNazev:'Z' }   // příčný: a=z, podél X
+  : { aMin:0.6, aMax:ROOM.celo-0.6,    sMin:0.3, sMax:ROOM.hloubka-0.3, aNazev:'X' }; // podélný: a=x, podél Z
+const svWorld=(f)=>{ const t=trk(f.tr); return t.ori==='X' ? [f.s, t.a] : [t.a, f.s]; };
+function clampSvNaTrack(f){ const t=trk(f.tr); f.s=Math.max(t.od+0.12,Math.min(t.do-0.12,f.s)); }
+function rebuildTrackMeshes(){
+  while(trackRoot.children.length) trackRoot.remove(trackRoot.children[0]);
+  stav.tracks.forEach(t=>{
+    const len=Math.max(0.2,t.do-t.od), mid=(t.od+t.do)/2, oriX=t.ori==='X';
+    const wx=oriX?mid:t.a, wz=oriX?t.a:mid;
+    const m=new THREE.Mesh(new THREE.BoxGeometry(0.052,0.028,len),
+      new THREE.MeshStandardMaterial({color:0x101013,roughness:0.5,metalness:0.5}));
+    m.position.set(wx,H-0.014,wz); if(oriX) m.rotation.y=Math.PI/2; m.castShadow=true; trackRoot.add(m);
+    const drazka=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.004,len),
+      new THREE.MeshStandardMaterial({color:0x000000,roughness:0.9}));
+    drazka.position.set(wx,H-0.0295,wz); if(oriX) drazka.rotation.y=Math.PI/2; trackRoot.add(drazka);
+  });
+}
+function rebuildTracks(){ rebuildTrackMeshes(); ulozTrackUI(); }
+
+/* ---------- svítidla ---------- */
+function vyrobSvitidlo(f){
+  const def=SVITIDLA[f.t];
+  const t=trk(f.tr), oriX=t.ori==='X';
+  const [wx0,wz0]=svWorld(f);
+  const grp=new THREE.Group(); grp.position.set(wx0, H-0.028, wz0);
+  grp.userData.fix=f;
+  const adapterMat=new THREE.MeshStandardMaterial({color:0x141417,roughness:0.45,metalness:0.6});
+  const emisMat=new THREE.MeshStandardMaterial({color:0xffffff,emissive:0xffffff,emissiveIntensity:1.6});
+  const emis=[];
+  let light=null, target=null;
+
+  if(f.t==='spot'||f.t==='zoom'){
+    const ad=new THREE.Mesh(new THREE.BoxGeometry(0.034,0.018,0.16),adapterMat); ad.position.y=-0.009;
+    if(oriX) ad.rotation.y=Math.PI/2; grp.add(ad);
+    const stem=new THREE.Mesh(new THREE.CylinderGeometry(0.011,0.011,0.07,10),adapterMat); stem.position.y=-0.053; grp.add(stem);
+    const R=f.t==='zoom'?0.0325:0.0225, L=f.t==='zoom'?0.135:0.10;
+    const bodyG=new THREE.Group(); bodyG.position.y=-0.095; grp.add(bodyG);
+    const geo=new THREE.CylinderGeometry(R,R,L,20); geo.rotateX(Math.PI/2);
+    const body=new THREE.Mesh(geo,adapterMat); bodyG.add(body);
+    if(f.t==='zoom'){ const ring=new THREE.Mesh(new THREE.CylinderGeometry(R+0.005,R+0.005,0.03,20).rotateX(Math.PI/2),M.cernyKov); ring.position.z=-L/2+0.02; bodyG.add(ring); }
+    const lensGeo=new THREE.CircleGeometry(R*0.8,18); const lens=new THREE.Mesh(lensGeo,emisMat);
+    lens.position.z=-L/2-0.002; lens.rotation.y=Math.PI; bodyG.add(lens); emis.push(emisMat);
+    grp.userData.bodyG=bodyG;
+    light=new THREE.SpotLight(0xffffff,1,0,1,0.45,1.5);
+    target=new THREE.Object3D();
+  }
+  else if(f.t==='grille'||f.t==='diff'||f.t==='flood'){
+    if(oriX) grp.rotation.y=Math.PI/2;   // lineární modul leží podél tracku
+    const len=f.t==='flood'?0.6:0.22;
+    const telo=new THREE.Mesh(new THREE.BoxGeometry(0.022,0.026,len),adapterMat); telo.position.y=-0.013; grp.add(telo);
+    if(f.t==='grille'){
+      for(let i=0;i<Math.round(len/0.022);i++){
+        const b=new THREE.Mesh(new THREE.PlaneGeometry(0.014,0.014),emisMat);
+        b.rotation.x=Math.PI/2; b.position.set(0,-0.0272,-len/2+0.014+i*0.022); grp.add(b); }
+    } else {
+      const pas=new THREE.Mesh(new THREE.PlaneGeometry(0.016,len-0.02),emisMat);
+      pas.rotation.x=Math.PI/2; pas.position.y=-0.0272; grp.add(pas);
+    }
+    emis.push(emisMat);
+    light=new THREE.SpotLight(0xffffff,1,0,1,0.6,1.4);
+    target=new THREE.Object3D();
+  }
+  else if(f.t==='pendant'){
+    const drop=f.drop??1.2;
+    const ad=new THREE.Mesh(new THREE.BoxGeometry(0.034,0.018,0.12),adapterMat); ad.position.y=-0.009;
+    if(oriX) ad.rotation.y=Math.PI/2; grp.add(ad);
+    const lanko=new THREE.Mesh(new THREE.CylinderGeometry(0.002,0.002,drop,6),M.cernyMat); lanko.position.y=-drop/2; grp.add(lanko);
+    const koule=new THREE.Mesh(new THREE.SphereGeometry(0.05,22,18),emisMat); koule.position.y=-drop-0.05; grp.add(koule);
+    const cepicka=new THREE.Mesh(new THREE.SphereGeometry(0.052,22,10,0,Math.PI*2,0,Math.PI/2.7),adapterMat);
+    cepicka.position.y=-drop-0.05; grp.add(cepicka);
+    emis.push(emisMat);
+    light=new THREE.PointLight(0xffffff,1,7,1.7);
+    light.position.y=-drop-0.05;
+  }
+  grp.traverse(o=>{ if(o.isMesh) o.castShadow=false; });
+  svRoot.add(grp);
+  if(light){ grp.add(light); }
+  if(target){ scene.add(target); light.target=target; }
+  const rec={data:f,grp,light,target,emis};
+  liveSv.push(rec); aktualizujSvitidlo(rec);
+  return rec;
+}
+function aktualizujSvitidlo(rec){
+  const f=rec.data, def=SVITIDLA[f.t];
+  const [wx,wz]=svWorld(f);
+  rec.grp.position.set(wx,H-0.028,wz);
+  const barva=kelvinRGB(f.k);
+  rec.emis.forEach(m=>{ m.emissive.copy(barva); m.color.copy(barva); m.emissiveIntensity=0.4+1.6*f.dim; });
+  if(!rec.light) return;
+  const I=def.base*f.dim*stav.gmult;
+  rec.light.color.copy(barva);
+  if(rec.light.isSpotLight){
+    const beam=f.t==='zoom'?(f.ang??36):def.beam;
+    rec.light.angle=Math.min(Math.PI/2.05, beam*Math.PI/360);
+    rec.light.intensity=I; rec.light.distance=13; rec.light.decay=1.5;
+    let ax=f.tx, az=f.tz;
+    if(!def.aim){ ax=wx; az=wz; }
+    if(Math.abs(ax-wx)<0.02 && Math.abs(az-wz)<0.02) az+=0.02;
+    rec.target.position.set(ax,0,az);
+  } else {
+    rec.light.intensity=I; rec.light.position.y=-(f.drop??1.2)-0.05;
+    // posun lanka+koule při změně závěsu => nejjednodušší rebuild
+  }
+}
+function rebuildSvetla(){
+  liveSv.forEach(r=>{ if(r.target) scene.remove(r.target); });
+  liveSv.length=0;
+  while(svRoot.children.length) svRoot.remove(svRoot.children[0]);
+  stav.svetla.forEach(f=>vyrobSvitidlo(f));
+}
+
+/* ---------- aim marker ---------- */
+const aimMarker=new THREE.Mesh(new THREE.TorusGeometry(0.13,0.012,10,28),
+  new THREE.MeshBasicMaterial({color:COL.zlata}));
+aimMarker.rotation.x=Math.PI/2; aimMarker.position.y=0.02; aimMarker.visible=false; scene.add(aimMarker);
+
+/* ===================================================================
+   VÝCHOZÍ STAV / (DE)SERIALIZACE
+   =================================================================== */
+function vychoziStav(){
+  stav.cine=true; // reál: strop přemalovaný načerno
+  stav.tracks=[
+    {ori:'Z',a:1.0,od:2.0,do:13.0},    // tr0 ulička – u levé zdi (regál)
+    {ori:'Z',a:2.7,od:3.0,do:11.0},    // tr1 ulička – u nika-stěny (věšáky)
+    {ori:'Z',a:4.4,od:1.0,do:14.8},    // tr2 retail – u niky
+    {ori:'Z',a:6.2,od:1.0,do:14.8},    // tr3 retail – střed
+    {ori:'Z',a:8.0,od:1.0,do:14.8},    // tr4 retail – u pravé stěny/výlohy
+    {ori:'X',a:1.1,od:3.6,do:8.6},     // tr5 příčná – čelní výloha + vstup
+    {ori:'X',a:15.0,od:0.5,do:8.6}     // tr6 příčná – podél stěny se dvěma dveřmi
+  ]; stav.denni=1.0; stav.gmult=1.1;
+  stav.objekty=[ {t:'pultdl',x:4.48,z:5.31,r:Math.PI/2}, {t:'pultkr',x:4.1,z:3.66,r:0}, {t:'gaucRoh',x:7.0,z:4.6,r:Math.PI,c:3},
+    {t:'nikaOstrov',x:4.5,z:9.0,r:Math.PI/2,w:4.0}, {t:'nikaOstrov',x:7.0,z:9.0,r:Math.PI/2,w:4.0},
+    {t:'regal',x:0.3,z:6.0,r:-Math.PI/2}, {t:'regal',x:0.3,z:9.0,r:-Math.PI/2},
+    {t:'figurina',x:4.4,z:5.0,r:-0.4}, {t:'taburet',x:6.6,z:6.2,r:0,c:4}, {t:'rostlina',x:0.5,z:14.8,r:0} ];
+  stav.steny=defaultSteny();
+  stav.svetla=[];
+  const P=(t,tr,s,tx,tz,ang)=>{ const o={t,tr,s:+(+s).toFixed(2),tx,tz,k:3000,dim:(t==='diff'?0.9:1.0)}; if(ang)o.ang=ang; stav.svetla.push(o); };
+  const PEND=(tr,s)=> stav.svetla.push({t:'pendant',tr,s:+(+s).toFixed(2),tx:0,tz:0,k:3000,dim:1.0,drop:1.3});
+  const lin=(a,b,n)=>Array.from({length:n},(_,i)=>+(a+i*(b-a)/(n-1)).toFixed(2));
+  // tr0 ulička – regál u levé zdi: 10× bodovka 12W (na zeď)
+  lin(2.4,12.6,10).forEach(s=> P('spot',0,s,0.2,s));
+  // tr1 ulička – věšáky: 8× bodovka 12W (na nika-stěnu)
+  lin(3.3,10.7,8).forEach(s=> P('spot',1,s,2.9,s));
+  // tr2 retail u niky: 6× spot 12W (na niku) + 6× difuz + 1 zoom
+  lin(1.2,14.6,12).forEach((s,i)=> (i%2===0) ? P('spot',2,s,3.6,s) : P('diff',2,s,4.4,s));
+  P('zoom',2,8.0,3.4,8.0,30);
+  // tr3 retail střed: 6× spot 15W (akcent) + 8× difuz (ambient)
+  lin(2.0,14.2,6).forEach(s=> P('spot',3,s,6.2,s));
+  lin(1.2,14.6,8).forEach(s=> P('diff',3,s,6.2,s));
+  // tr4 retail pravá: 6× spot 12W (na pravou stěnu) + 6× difuz + 1 zoom
+  lin(1.2,14.6,12).forEach((s,i)=> (i%2===0) ? P('spot',4,s,8.4,s) : P('diff',4,s,7.8,s));
+  P('zoom',4,8.0,8.5,8.0,30);
+  // tr5 čelní výloha: 4× zoom (hero) + 4× spot 15W (display)
+  lin(4.0,8.4,8).forEach((s,i)=> (i%2===0) ? P('zoom',5,s,s,0.2,30) : P('spot',5,s,s,0.2));
+  // tr6 stěna se dveřmi: 4× spot 12W + 4× difuz
+  lin(1.0,8.4,8).forEach((s,i)=> (i%2===0) ? P('spot',6,s,s,15.3) : P('diff',6,s,s,15.0));
+  // DESIGNOVÉ závěsné koule (Pendant Ball E100-7BP) nad loungem a pultem
+  PEND(4,4.6); PEND(3,4.6); PEND(3,12.2);
+  PRESETY.vinyl();
+}
+function serializuj(){
+  return JSON.stringify({ v:5, cine:stav.cine, tracks:stav.tracks, objekty:stav.objekty,
+    svetla:stav.svetla, steny:stav.steny, podlaha:Array.from(stav.podlaha), denni:stav.denni, gmult:stav.gmult });
+}
+function aplikuj(json){
+  try{
+    const d=JSON.parse(json);
+    // migrace: v2 tracky čísla (x) → v3 {x,z0,z1} → v5 {ori,a,od,do}; svítidla f.z → f.s
+    stav.tracks=(d.tracks&&d.tracks.length?d.tracks:[2.5,6]).slice(0,8).map(t=>{
+      if(typeof t==='number') return {ori:'Z',a:t,od:1.2,do:17.3};
+      if(t.ori) return {ori:t.ori==='X'?'X':'Z', a:+t.a||2.5, od:+t.od||1.2, do:+t.do||17.3};
+      return {ori:'Z', a:+t.x||2.5, od:+t.z0||1.2, do:+t.z1||17.3};
+    });
+    stav.tracks.forEach(t=>{ const o=trOsy(t);
+      t.a=Math.max(o.aMin,Math.min(o.aMax,t.a));
+      t.od=Math.max(o.sMin,Math.min(o.sMax,t.od)); t.do=Math.max(o.sMin,Math.min(o.sMax,t.do));
+      if(t.do-t.od<TR_DMIN) t.do=Math.min(o.sMax,t.od+TR_DMIN); });
+    stav.cine=(d.v>=3)?!!d.cine:true;
+    stav.objekty=(d.objekty||[]).filter(o=>TYPY[o.t]);
+    stav.svetla=(d.svetla||[]).filter(f=>SVITIDLA[f.t]&&f.tr<stav.tracks.length);
+    stav.svetla.forEach(f=>{ if(f.s==null) f.s=+f.z||0; delete f.z; clampSvNaTrack(f); });
+    stav.steny=Array.isArray(d.steny)
+      ? d.steny.filter(e=>ELTYPY[e.t]&&STENY[e.w]).map(e=>({t:e.t,w:e.w,pos:+e.pos||0,len:+e.len||ELTYPY[e.t].len}))
+      : defaultSteny(); // migrace v<4 (a smazání starých bočních dveří — nebyly v datech, byly natvrdo)
+    if(d.podlaha&&d.podlaha.length===FC*FR) stav.podlaha.set(d.podlaha);
+    stav.denni=d.denni??1; stav.gmult=d.gmult??1;
+    return true;
+  }catch(e){ console.warn('Import selhal',e); return false; }
+}
+let saveTimer=null;
+function uloz(hned=false){
+  if(saveTimer) clearTimeout(saveTimer);
+  const fn=()=>{ try{ localStorage.setItem(KLIC,serializuj()); }catch(e){} aktualizujStats(); };
+  hned?fn():saveTimer=setTimeout(fn,700);
+}
+
+/* ===================================================================
+   UI — editor panel
+   =================================================================== */
+const $=(id)=>document.getElementById(id);
+const editor=$('editor');
+let aktivniTab='obj';
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>{
+  aktivniTab=b.dataset.tab;
+  document.querySelectorAll('#tabs button').forEach(x=>x.classList.toggle('act',x===b));
+  document.querySelectorAll('.tabc').forEach(x=>x.classList.toggle('act',x.id==='tab-'+b.dataset.tab));
+  zrusRezimy();
+});
+$('btnEditor').onclick=()=>{ editor.classList.toggle('open'); $('btnEditor').classList.toggle('active'); };
+$('btnEclose').onclick=()=>{ editor.classList.remove('open'); $('btnEditor').classList.remove('active'); };
+$('btnTop').onclick=()=>{ if(mode!=='orbit') setOrbit();
+  camera.position.set(CX, 26, CZ+0.01); orbit.target.set(CX,0,CZ); orbit.update(); };
+
+function tipuj(txt){ const t=$('tip'); if(!txt){ t.style.display='none'; return; } t.textContent=txt; t.style.display='block'; }
+
+/* --- katalog objektů --- */
+const katEl=$('katalog');
+Object.entries(TYPY).forEach(([id,def])=>{
+  const b=document.createElement('div'); b.className='kat'; b.dataset.t=id;
+  b.innerHTML=`<span class="ic">${def.ic}</span><span class="nm">${def.nazev}</span>`;
+  b.onclick=()=>zacniUmistovani(id);
+  katEl.appendChild(b);
+});
+
+/* --- katalog svítidel --- */
+const svkatEl=$('svkatalog');
+Object.entries(SVITIDLA).forEach(([id,def])=>{
+  const b=document.createElement('div'); b.className='kat'; b.dataset.s=id;
+  b.innerHTML=`<span class="ic">${def.ic}</span><span class="nm">${def.nazev}</span><span class="sub">${def.w}</span>`;
+  b.onclick=()=>zacniSvitidlo(id);
+  svkatEl.appendChild(b);
+});
+
+/* --- katalog prvků na stěny --- */
+const wkatEl=$('wkatalog');
+Object.entries(ELTYPY).forEach(([id,def])=>{
+  const b=document.createElement('div'); b.className='kat'; b.dataset.w=id;
+  b.innerHTML=`<span class="ic">${def.ic}</span><span class="nm">${def.nazev}</span><span class="sub">${def.resize?'šířka nastavitelná':def.len.toFixed(1)+' m'}</span>`;
+  b.onclick=()=>zacniWallPrvek(id);
+  wkatEl.appendChild(b);
+});
+
+/* --- podlahové swatche --- */
+const matEl=$('matswatch');
+MATY.forEach(m=>{
+  const s=document.createElement('div'); s.className='swatch'; s.style.background=m.css; s.dataset.m=m.id;
+  s.innerHTML=`<span>${m.nazev}</span>`;
+  s.onclick=()=>zacniMalovani(m.id);
+  matEl.appendChild(s);
+});
+document.querySelectorAll('#tab-pod [data-pre]').forEach(b=>b.onclick=()=>{
+  PRESETY[b.dataset.pre](); redrawFloor(); uloz(); tipuj('Podlaha přepnuta: '+b.textContent.trim());
+  setTimeout(()=>tipuj(null),1800);
+});
+$('paintStop').onclick=()=>zrusRezimy();
+
+/* --- track UI --- */
+function ulozTrackUI(){
+  const el=$('tracklist'); el.innerHTML='';
+  stav.tracks.forEach((t,i)=>{
+    const osy=trOsy(t);
+    const r=document.createElement('div'); r.className='trbox';
+    r.innerHTML=`<div class="trhead">Track ${i+1} · <span class="tlen">${(t.do-t.od).toFixed(1)} m</span><span class="sp"></span>
+        <button class="ori${t.ori!=='X'?' on':''}" data-o="Z" title="podélně (po hloubce prodejny)">⬍ podél</button>
+        <button class="ori${t.ori==='X'?' on':''}" data-o="X" title="příčně (po šířce prodejny)">⬌ příčně</button>
+        <button class="x" title="odebrat track">✕</button></div>
+      <div class="trl"><label>${osy.aNazev}</label><input data-k="a" type="range" min="${osy.aMin}" max="${osy.aMax}" step="0.1" value="${t.a}"><span class="val">${t.a.toFixed(1)} m</span></div>
+      <div class="trl"><label>od</label><input data-k="od" type="range" min="${osy.sMin}" max="${osy.sMax}" step="0.1" value="${t.od}"><span class="val">${t.od.toFixed(1)} m</span></div>
+      <div class="trl"><label>do</label><input data-k="do" type="range" min="${osy.sMin}" max="${osy.sMax}" step="0.1" value="${t.do}"><span class="val">${t.do.toFixed(1)} m</span></div>`;
+    r.querySelectorAll('input').forEach(rng=>{
+      const val=rng.parentElement.querySelector('.val');
+      rng.oninput=()=>{ let v=+rng.value;
+        if(rng.dataset.k==='od'){ v=Math.min(v,t.do-TR_DMIN); rng.value=v; }
+        if(rng.dataset.k==='do'){ v=Math.max(v,t.od+TR_DMIN); rng.value=v; }
+        t[rng.dataset.k]=v; val.textContent=v.toFixed(1)+' m';
+        r.querySelector('.tlen').textContent=(t.do-t.od).toFixed(1)+' m';
+        rebuildTrackMeshes();
+        liveSv.forEach(s=>{ if(s.data.tr===i){ clampSvNaTrack(s.data); aktualizujSvitidlo(s); } });
+        if(fsel&&fsel.data.tr===i) aimMarker.position.set(fsel.data.tx,0.02,fsel.data.tz);
+        uloz(); };
+    });
+    r.querySelectorAll('.ori').forEach(b=>b.onclick=()=>{
+      if(t.ori===b.dataset.o) return;
+      const L=t.do-t.od, stredS=(t.od+t.do)/2, staraA=t.a;
+      t.ori=b.dataset.o;
+      const n=trOsy(t);
+      t.a=Math.max(n.aMin,Math.min(n.aMax,stredS));
+      let od=staraA-L/2, doo=staraA+L/2;
+      if(doo-od>n.sMax-n.sMin){ od=n.sMin; doo=n.sMax; }
+      if(od<n.sMin){ doo+=n.sMin-od; od=n.sMin; }
+      if(doo>n.sMax){ od-=doo-n.sMax; doo=n.sMax; od=Math.max(n.sMin,od); }
+      t.od=+od.toFixed(1); t.do=+doo.toFixed(1);
+      stav.svetla.forEach(f=>{ if(f.tr===i) clampSvNaTrack(f); });
+      rebuildTracks(); rebuildSvetla(); vyberSvitidlo(null); uloz(); });
+    r.querySelector('.x').onclick=()=>{
+      if(stav.tracks.length<=1){ tipuj('Musí zůstat aspoň jeden track'); setTimeout(()=>tipuj(null),1500); return; }
+      stav.tracks.splice(i,1);
+      stav.svetla=stav.svetla.filter(f=>f.tr!==i);
+      stav.svetla.forEach(f=>{ if(f.tr>i) f.tr--; });
+      rebuildTracks(); rebuildSvetla(); vyberSvitidlo(null); uloz(); };
+    el.appendChild(r);
+  });
+}
+$('trAdd').onclick=()=>{ if(stav.tracks.length>=8){ tipuj('Max 8 tracků'); setTimeout(()=>tipuj(null),1500); return; }
+  stav.tracks.push({ori:'Z',a:4.2,od:1.2,do:14.4}); rebuildTracks(); uloz(); };
+
+/* --- globální světla --- */
+function syncGlob(){
+  $('denni').value=stav.denni*100; $('denniv').textContent=Math.round(stav.denni*100)+' %';
+  $('gmult').value=stav.gmult*100; $('gmultv').textContent=Math.round(stav.gmult*100)+' %';
+}
+$('denni').oninput=e=>{ stav.denni=e.target.value/100; aplikujDenni(); syncGlob(); uloz(); };
+$('gmult').oninput=e=>{ stav.gmult=e.target.value/100; liveSv.forEach(aktualizujSvitidlo); syncGlob(); uloz(); };
+function aplikujDenni(){
+  const c=stav.cine;
+  sun.intensity=1.45*stav.denni*(c?0.35:1);   // černý strop pohltí část světla, ale není noc
+  hemi.intensity=0.5*stav.denni*(c?0.45:1);
+}
+$('svAuto').onclick=()=>{
+  stav.svetla=[];
+  stav.tracks.forEach((t,tr)=>{ const oriX=t.ori==='X';
+    for(let s=t.od+0.8; s<=t.do-0.6; s+=2.0){
+      let tx,tz;
+      if(oriX){ tz = t.a<CZ ? Math.max(0.4,t.a-1.5) : Math.min(ROOM.hloubka-0.4,t.a+1.5); tx=+Math.min(ROOM.celo-0.4,s+0.25).toFixed(2); }
+      else    { tx = t.a<CX ? Math.max(0.4,t.a-1.5) : Math.min(ROOM.celo-0.4,t.a+1.5); tz=+Math.min(ROOM.hloubka-0.4,s+0.25).toFixed(2); }
+      stav.svetla.push({t:'spot',tr,s:+s.toFixed(2),tx,tz,k:3000,dim:0.85}); } });
+  rebuildSvetla(); vyberSvitidlo(null); uloz();
+};
+$('svClear').onclick=()=>{ stav.svetla=[]; rebuildSvetla(); vyberSvitidlo(null); uloz(); };
+
+/* --- moje návrhy (pojmenovaná uložení) --- */
+const NKLIC='amande3d_navrhy';
+function nactiNavrhy(){ try{ const a=JSON.parse(localStorage.getItem(NKLIC)); return Array.isArray(a)?a:[]; }catch(_){ return []; } }
+function renderNavrhy(){
+  const el=$('navList'); el.innerHTML='';
+  const arr=nactiNavrhy();
+  if(!arr.length){ el.innerHTML='<div class="note">Zatím žádné uložené návrhy. Pojmenuj aktuální stav a ulož ho.</div>'; return; }
+  arr.forEach((n,i)=>{
+    const r=document.createElement('div'); r.className='navrow';
+    const d=new Date(n.d);
+    r.innerHTML=`<span class="nn" title="${n.n}">${n.n}</span>
+      <span class="nd">${d.getDate()}.${d.getMonth()+1}. ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}</span>
+      <button class="ld">↺</button><button class="del">✕</button>`;
+    r.querySelector('.ld').title='načíst návrh';
+    r.querySelector('.ld').onclick=()=>{
+      if(aplikuj(n.data)){ obnovVse(); uloz(true); tipuj(`Návrh „${n.n}" načten ✓`); setTimeout(()=>tipuj(null),1600); } };
+    r.querySelector('.del').title='smazat návrh';
+    r.querySelector('.del').onclick=()=>{
+      if(!confirm(`Smazat návrh „${n.n}"?`)) return;
+      const a=nactiNavrhy(); a.splice(i,1); localStorage.setItem(NKLIC,JSON.stringify(a)); renderNavrhy(); };
+    el.appendChild(r);
+  });
+}
+$('navSave').onclick=()=>{
+  let n=$('navName').value.trim();
+  if(!n){ const d=new Date(); n=`návrh ${d.getDate()}.${d.getMonth()+1}. ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+  const a=nactiNavrhy(); const ex=a.findIndex(x=>x.n===n);
+  const rec={ n, d:Date.now(), data:serializuj() };
+  if(ex>=0){ if(!confirm(`Návrh „${n}" už existuje — přepsat?`)) return; a[ex]=rec; } else a.push(rec);
+  try{ localStorage.setItem(NKLIC,JSON.stringify(a)); }
+  catch(err){ tipuj('Úložiště prohlížeče je plné — smaž starší návrhy'); setTimeout(()=>tipuj(null),2200); return; }
+  $('navName').value=''; renderNavrhy();
+  tipuj(`Uloženo: „${n}" ✓`); setTimeout(()=>tipuj(null),1500);
+};
+
+/* --- soubor --- */
+$('expJson').onclick=()=>{
+  const blob=new Blob([serializuj()],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download='amande-prodejna-layout.json'; a.click(); URL.revokeObjectURL(a.href);
+};
+$('impJson').onclick=()=>$('impFile').click();
+$('impFile').onchange=e=>{
+  const f=e.target.files[0]; if(!f) return;
+  const r=new FileReader();
+  r.onload=()=>{ if(aplikuj(r.result)){ obnovVse(); uloz(true); tipuj('Import hotov ✓'); setTimeout(()=>tipuj(null),1500); }
+                 else { tipuj('Soubor se nepodařilo načíst'); setTimeout(()=>tipuj(null),2000); } };
+  r.readAsText(f); e.target.value='';
+};
+$('resetAll').onclick=()=>{
+  if(!confirm('Opravdu obnovit výchozí stav? Aktuální rozvržení se přepíše.')) return;
+  vychoziStav(); obnovVse(); uloz(true);
+};
+function aktualizujStats(){
+  $('stats').innerHTML=`objekty: <b>${stav.objekty.length}</b> · svítidla: <b>${stav.svetla.length}</b> · tracky: <b>${stav.tracks.length}</b>`;
+}
+
+/* ===================================================================
+   INTERAKCE — raycast, umisťování, výběr, drag, malování, míření
+   =================================================================== */
+const ray=new THREE.Raycaster(); const ndc=new THREE.Vector2();
+const rovina=new THREE.Plane(new THREE.Vector3(0,1,0),0);
+let ghost=null, ghostTyp=null;        // umisťování objektu
+let svGhost=null, svTyp=null;         // umisťování svítidla
+let wGhost=null, wTyp=null;           // umisťování prvku na stěnu
+let paintMat=-1, painting=false;      // malování podlahy
+let aiming=false;                     // míření vybrané bodovky
+let sel=null, selBox=null;            // vybraný objekt (Group)
+let fsel=null;                        // vybrané svítidlo (rec)
+let wsel=null, wselHelper=null;       // vybraný prvek stěny
+let drag=null;                        // {kind:'obj'|'fix'|'wel'}
+let downPt=null;
+function wallHit(e){ ndcFromEvent(e); ray.setFromCamera(ndc,camera);
+  const h=ray.intersectObjects(pickRoot.children)[0]; if(!h) return null;
+  const id=h.object.userData.wall, s=STENY[id];
+  const pos=(h.point.x-s.p1[0])*s.dir[0]+(h.point.z-s.p1[1])*s.dir[1];
+  return { w:id, pos:Math.max(0,Math.min(s.len,pos)) }; }
+function attachWselHelper(){
+  if(wselHelper){ scene.remove(wselHelper); wselHelper=null; }
+  if(!wsel) return;
+  const g=elRoot.children.find(x=>x.userData.el===wsel);
+  if(g){ wselHelper=new THREE.BoxHelper(g,COL.zlata); scene.add(wselHelper); } }
+
+function ndcFromEvent(e){ const r=renderer.domElement.getBoundingClientRect();
+  ndc.x=((e.clientX-r.left)/r.width)*2-1; ndc.y=-((e.clientY-r.top)/r.height)*2+1; }
+function floorHit(e){ ndcFromEvent(e); ray.setFromCamera(ndc,camera);
+  const p=new THREE.Vector3(); return ray.ray.intersectPlane(rovina,p)?p:null; }
+function clampObj(x,z,t){
+  x=Math.max(0.25,Math.min(ROOM.celo-0.25,x));
+  z=Math.max(0.25,Math.min(ROOM.hloubka-0.25,z));
+  if(x<vx+0.2 && z<vd+0.2){ if(vd+0.2-z < vx+0.2-x) z=vd+0.2; else x=vx+0.2; }
+  if($('snap').checked){ x=Math.round(x*4)/4; z=Math.round(z*4)/4; }
+  return [x,z];
+}
+
+function zrusRezimy(){
+  if(ghost){ objRoot.remove(ghost); ghost=null; ghostTyp=null; }
+  if(svGhost){ svRoot.remove(svGhost); svGhost=null; svTyp=null; }
+  if(wGhost){ scene.remove(wGhost); wGhost=null; wTyp=null; }
+  paintMat=-1; painting=false; aiming=false;
+  renderer.domElement.classList.remove('paint');
+  document.querySelectorAll('.kat.act,.swatch.act').forEach(x=>x.classList.remove('act'));
+  $('paintStop').style.display='none';
+  $('fAim').classList.remove('act');
+  tipuj(null);
+}
+function zghostuj(g){ g.traverse(o=>{ if(o.isMesh){ o.material=o.material.clone(); o.material.transparent=true; o.material.opacity=0.55; o.material.depthWrite=false; } }); return g; }
+
+function zacniUmistovani(t){
+  zrusRezimy(); vyberObjekt(null); vyberSvitidlo(null);
+  ghostTyp=t; ghost=zghostuj(TYPY[t].vyrob(barvaObj({t}))); ghost.visible=false; objRoot.add(ghost);
+  document.querySelector(`.kat[data-t="${t}"]`)?.classList.add('act');
+  tipuj(`${TYPY[t].nazev}: klikni do prostoru (Shift = více kusů, Esc = konec)`);
+}
+function zacniSvitidlo(t){
+  zrusRezimy(); vyberObjekt(null); vyberSvitidlo(null);
+  svTyp=t;
+  svGhost=new THREE.Mesh(new THREE.SphereGeometry(0.06,14,10),
+    new THREE.MeshBasicMaterial({color:COL.zlata,transparent:true,opacity:0.8}));
+  svGhost.visible=false; svRoot.add(svGhost);
+  document.querySelector(`.kat[data-s="${t}"]`)?.classList.add('act');
+  tipuj(`${SVITIDLA[t].nazev}: klikni na pozici na tracku (Shift = více kusů)`);
+}
+function zacniWallPrvek(t){
+  zrusRezimy(); vyberObjekt(null); vyberSvitidlo(null); vyberWallEl(null);
+  wTyp=t; const len=ELTYPY[t].len;
+  wGhost=new THREE.Mesh(new THREE.BoxGeometry(len,H-0.25,0.09),
+    new THREE.MeshBasicMaterial({color:COL.zlata,transparent:true,opacity:0.45,depthWrite:false}));
+  wGhost.visible=false; scene.add(wGhost);
+  document.querySelector(`.kat[data-w="${t}"]`)?.classList.add('act');
+  tipuj(`${ELTYPY[t].nazev}: klikni na stěnu (Shift = více kusů, Esc = konec)`);
+}
+function zacniMalovani(m){
+  zrusRezimy(); vyberObjekt(null); vyberSvitidlo(null);
+  paintMat=m;
+  document.querySelector(`.swatch[data-m="${m}"]`)?.classList.add('act');
+  renderer.domElement.classList.add('paint');
+  $('paintStop').style.display='block';
+  tipuj(`Maluješ: ${MATY[m].nazev} — tahej po podlaze, Esc konec`);
+}
+
+/* --- výběr objektu --- */
+function vyberObjekt(g){
+  if(selBox){ scene.remove(selBox); selBox=null; }
+  sel=g;
+  $('selbox').style.display=g?'block':'none';
+  if(g){ const o=g.userData.obj, def=TYPY[o.t];
+    $('selnm').textContent=def.nazev;
+    selBox=new THREE.BoxHelper(g,COL.zlata); scene.add(selBox);
+    const sb=$('selbarvy');
+    if(def.barvy){ sb.style.display='flex'; sb.innerHTML='';
+      BARVY.forEach((b,i)=>{ const d=document.createElement('div');
+        d.className='cdot'+((o.c??def.defC??0)===i?' act':''); d.title=b.n;
+        d.style.background='#'+b.c.toString(16).padStart(6,'0');
+        d.onclick=()=>{ o.c=i; const ng=prebarviObjekt(g,o); vyberObjekt(ng); uloz(); };
+        sb.appendChild(d); });
+    } else sb.style.display='none';
+    const wr=$('selwrap');
+    if(def.resize){ wr.style.display='block';
+      const w=o.w||def.w, sw=$('selw');
+      sw.min=def.resize[0]; sw.max=def.resize[1]; sw.value=w;
+      $('selwv').textContent=(+w).toFixed(1)+' m';
+    } else wr.style.display='none';
+  }
+}
+function prebarviObjekt(g,o){
+  objRoot.remove(g);
+  return vyrobObjekt(o);
+}
+/* dopasování niky: šířku roztáhne na nejbližší mezeru (sloup ↔ stěna) podle natočení */
+function dopasujNiku(o){
+  const clear=0.06, COLZ=[3.5,7.1,10.7], COLX=3.1, hw=0.065;
+  const alongX = Math.abs(Math.sin(o.r||0))<0.5;   // r≈0/π → šířka podél X; jinak podél Z
+  let center, cands;
+  if(alongX){ center=o.x; cands=[0, ROOM.celo];
+    COLZ.forEach(cz=>{ if(Math.abs(cz-o.z)<0.9) cands.push(COLX-hw, COLX+hw); });
+  } else { center=o.z; cands=[1.8, ROOM.hloubka];
+    COLZ.forEach(cz=>cands.push(cz-hw, cz+hw)); }
+  const lows=cands.filter(c=>c<center-0.02), highs=cands.filter(c=>c>center+0.02);
+  const below=lows.length?Math.max(...lows):0;
+  const above=highs.length?Math.min(...highs):(alongX?ROOM.celo:ROOM.hloubka);
+  const gap=above-below; if(!(gap>0.6)) return false;
+  o.w=Math.max(0.6, Math.min(4, gap-2*clear));
+  if(alongX) o.x=+((below+above)/2).toFixed(3); else o.z=+((below+above)/2).toFixed(3);
+  return true;
+}
+$('selw').oninput=e=>{ if(!sel)return; const o=sel.userData.obj; if(!TYPY[o.t].resize)return;
+  o.w=+e.target.value; $('selwv').textContent=o.w.toFixed(1)+' m';
+  vyberObjekt(prebarviObjekt(sel,o)); uloz(); };
+$('selfit').onclick=()=>{ if(!sel)return; const o=sel.userData.obj; if(!TYPY[o.t].resize)return;
+  if(dopasujNiku(o)){ vyberObjekt(prebarviObjekt(sel,o)); uloz(); tipuj('Nika dopasována na '+o.w.toFixed(1)+' m'); }
+  else tipuj('Tady se nedá dopasovat — posuň niku mezi sloup a stěnu'); };
+function vyberSvitidlo(rec){
+  fsel=rec; aiming=false; $('fAim').classList.remove('act');
+  $('fselbox').style.display=rec?'block':'none';
+  aimMarker.visible=false;
+  if(!rec) return;
+  const f=rec.data, def=SVITIDLA[f.t];
+  $('fselnm').textContent=`${def.nazev} · ${def.kod}`;
+  $('fdim').value=f.dim*100; $('fdimv').textContent=Math.round(f.dim*100)+' %';
+  document.querySelectorAll('#fcct button').forEach(b=>b.classList.toggle('act',+b.dataset.k===f.k));
+  $('fzoomrow').style.display=def.zoom?'block':'none';
+  if(def.zoom){ $('fang').value=f.ang??36; $('fangv').textContent=(f.ang??36)+'°'; }
+  $('fdroprow').style.display=def.drop?'block':'none';
+  if(def.drop){ $('fdrop').value=(f.drop??1.2)*100; $('fdropv').textContent=((f.drop??1.2)).toFixed(2)+' m'; }
+  $('fAim').style.display=def.aim?'':'none';
+  if(def.aim){ aimMarker.position.set(f.tx,0.02,f.tz); aimMarker.visible=true; }
+}
+$('fdim').oninput=e=>{ if(!fsel)return; fsel.data.dim=e.target.value/100; $('fdimv').textContent=e.target.value+' %'; aktualizujSvitidlo(fsel); uloz(); };
+document.querySelectorAll('#fcct button').forEach(b=>b.onclick=()=>{ if(!fsel)return;
+  fsel.data.k=+b.dataset.k; document.querySelectorAll('#fcct button').forEach(x=>x.classList.toggle('act',x===b));
+  aktualizujSvitidlo(fsel); uloz(); });
+$('fang').oninput=e=>{ if(!fsel)return; fsel.data.ang=+e.target.value; $('fangv').textContent=e.target.value+'°'; aktualizujSvitidlo(fsel); uloz(); };
+$('fdrop').oninput=e=>{ if(!fsel)return; fsel.data.drop=e.target.value/100; $('fdropv').textContent=(e.target.value/100).toFixed(2)+' m';
+  // delka lanka vyžaduje rebuild meshe
+  const f=fsel.data; rebuildSvetla(); fsel=liveSv.find(r=>r.data===f); vyberSvitidlo(fsel); uloz(); };
+$('fAim').onclick=()=>{ if(!fsel)return; aiming=!aiming; $('fAim').classList.toggle('act',aiming);
+  tipuj(aiming?'Klikni na podlahu/zboží, kam má bodovka svítit':null); };
+$('fDel').onclick=()=>{ if(!fsel)return; smazSvitidlo(fsel); };
+$('fDup').onclick=()=>{ if(!fsel)return; const f={...fsel.data,s:fsel.data.s+0.4}; clampSvNaTrack(f);
+  stav.svetla.push(f); const rec=vyrobSvitidlo(f); vyberSvitidlo(rec); uloz(); };
+function smazSvitidlo(rec){
+  stav.svetla=stav.svetla.filter(f=>f!==rec.data);
+  if(rec.target) scene.remove(rec.target);
+  svRoot.remove(rec.grp); liveSv.splice(liveSv.indexOf(rec),1);
+  vyberSvitidlo(null); uloz();
+}
+
+/* --- výběr prvku stěny --- */
+function vyberWallEl(e){
+  wsel=e;
+  $('wselbox').style.display=e?'block':'none';
+  attachWselHelper();
+  if(!e) return;
+  const s=STENY[e.w], def=ELTYPY[e.t], len=e.len??def.len;
+  $('wselnm').textContent=`${def.nazev} · ${s.nazev}`;
+  const wp=$('wpos'); wp.min=(len/2).toFixed(2); wp.max=(s.len-len/2).toFixed(2); wp.value=e.pos;
+  $('wposv').textContent=e.pos.toFixed(2)+' m';
+  $('wlenrow').style.display=def.resize?'block':'none';
+  if(def.resize){ const wl=$('wlen'); wl.min=def.resize[0]; wl.max=Math.min(def.resize[1],s.len).toFixed(1); wl.value=len;
+    $('wlenv').textContent=len.toFixed(1)+' m'; }
+}
+$('wpos').oninput=e2=>{ if(!wsel) return;
+  const len=wsel.len??ELTYPY[wsel.t].len, p=+e2.target.value;
+  if(volnyNaStene(wsel.w,p,len,wsel)){ wsel.pos=p; $('wposv').textContent=p.toFixed(2)+' m';
+    rebuildSteny(); attachWselHelper(); uloz(); }
+  else e2.target.value=wsel.pos; };
+$('wlen').oninput=e2=>{ if(!wsel) return;
+  const s=STENY[wsel.w]; let len=+e2.target.value;
+  let p=Math.max(len/2,Math.min(s.len-len/2,wsel.pos));
+  if(volnyNaStene(wsel.w,p,len,wsel)){ wsel.len=len; wsel.pos=p;
+    $('wlenv').textContent=len.toFixed(1)+' m';
+    const wp=$('wpos'); wp.min=(len/2).toFixed(2); wp.max=(s.len-len/2).toFixed(2); wp.value=p;
+    $('wposv').textContent=p.toFixed(2)+' m';
+    rebuildSteny(); attachWselHelper(); uloz(); }
+  else e2.target.value=wsel.len??ELTYPY[wsel.t].len; };
+$('wDel').onclick=()=>{ if(!wsel) return;
+  stav.steny=stav.steny.filter(x=>x!==wsel);
+  vyberWallEl(null); rebuildSteny(); uloz(); };
+
+/* --- toolbar vybraného objektu --- */
+$('oRotL').onclick=()=>{ if(sel){ sel.rotation.y+=Math.PI/4; sel.userData.obj.r=sel.rotation.y; selBox.update(); uloz(); } };
+$('oRotR').onclick=()=>{ if(sel){ sel.rotation.y-=Math.PI/4; sel.userData.obj.r=sel.rotation.y; selBox.update(); uloz(); } };
+$('oDup').onclick=()=>{ if(!sel) return; const o={...sel.userData.obj};
+  [o.x,o.z]=clampObj(o.x+0.35,o.z+0.35,o.t); stav.objekty.push(o); vyberObjekt(vyrobObjekt(o)); uloz(); };
+$('oDel').onclick=()=>{ if(!sel) return; smazObjekt(sel); };
+function smazObjekt(g){
+  stav.objekty=stav.objekty.filter(o=>o!==g.userData.obj);
+  objRoot.remove(g); vyberObjekt(null); uloz();
+}
+
+/* --- pointer handlery --- */
+function najdiKoren(o,root){ while(o && o.parent!==root) o=o.parent; return o; }
+renderer.domElement.addEventListener('pointerdown',e=>{
+  if(mode==='walk') return;
+  if(e.button===2){ zrusRezimy(); return; }
+  if(e.button!==0) return;
+  downPt=[e.clientX,e.clientY];
+  if(ghost||svGhost||wGhost||aiming) return;      // umístí se na pointerup
+  if(paintMat>=0){ const p=floorHit(e); if(p){ painting=true; orbit.enabled=false; malujBod(p); } return; }
+  // výběr/drag svítidla
+  ndcFromEvent(e); ray.setFromCamera(ndc,camera);
+  const hitS=ray.intersectObjects(svRoot.children,true)[0];
+  if(hitS){ const root=najdiKoren(hitS.object,svRoot);
+    const rec=liveSv.find(r=>r.grp===root);
+    if(rec){ vyberObjekt(null); vyberWallEl(null); vyberSvitidlo(rec); drag={kind:'fix'}; orbit.enabled=false; return; } }
+  // výběr/drag objektu
+  const hitO=ray.intersectObjects(objRoot.children,true)[0];
+  if(hitO){ const root=najdiKoren(hitO.object,objRoot);
+    if(root&&root!==ghost){ vyberSvitidlo(null); vyberWallEl(null); vyberObjekt(root); drag={kind:'obj'}; orbit.enabled=false; return; } }
+  // výběr/drag prvku stěny (výloha/dveře)
+  const hitW=ray.intersectObjects(elRoot.children,true)[0];
+  if(hitW){ const root=najdiKoren(hitW.object,elRoot);
+    if(root&&root.userData.el){ vyberObjekt(null); vyberSvitidlo(null); vyberWallEl(root.userData.el);
+      drag={kind:'wel'}; orbit.enabled=false; return; } }
+});
+renderer.domElement.addEventListener('pointermove',e=>{
+  if(mode==='walk') return;
+  if(ghost){ const p=floorHit(e); if(p){ const [x,z]=clampObj(p.x,p.z,ghostTyp); ghost.visible=true; ghost.position.set(x,0,z); } return; }
+  if(svGhost){ const p=floorHit(e); if(p){
+      let best=0,bd=1e9; stav.tracks.forEach((t,i)=>{
+        const oriX=t.ori==='X', perp=oriX?Math.abs(t.a-p.z):Math.abs(t.a-p.x), along=oriX?p.x:p.z;
+        const pen=perp+((along<t.od||along>t.do)?40:0); if(pen<bd){bd=pen;best=i;} });
+      const t=trk(best), oriX=t.ori==='X', along=oriX?p.x:p.z;
+      const s=Math.max(t.od+0.12,Math.min(t.do-0.12,along));
+      svGhost.visible=true; svGhost.position.set(oriX?s:t.a,H-0.1,oriX?t.a:s); svGhost.userData={tr:best,s}; } return; }
+  if(wGhost){ const hit=wallHit(e);
+    if(hit){ const len=ELTYPY[wTyp].len, s=STENY[hit.w];
+      const p=Math.max(len/2,Math.min(s.len-len/2,hit.pos));
+      const ok=volnyNaStene(hit.w,p,len,null);
+      const mid=bodNaStene(s,p);
+      wGhost.visible=true; wGhost.position.set(mid[0],(H-0.25)/2,mid[1]); wGhost.rotation.y=s.ang;
+      wGhost.material.color.set(ok?COL.zlata:0xcc4444);
+      wGhost.userData={w:hit.w,pos:p,ok};
+    } else wGhost.visible=false; return; }
+  if(painting){ const p=floorHit(e); if(p) malujBod(p); return; }
+  if(drag&&sel&&drag.kind==='obj'){ const p=floorHit(e); if(p){ const o=sel.userData.obj;
+      [o.x,o.z]=clampObj(p.x,p.z,o.t); sel.position.set(o.x,0,o.z); selBox.update(); } return; }
+  if(drag&&wsel&&drag.kind==='wel'){ const hit=wallHit(e);
+    if(hit&&hit.w===wsel.w){ const len=wsel.len??ELTYPY[wsel.t].len, s=STENY[wsel.w];
+      let p=Math.max(len/2,Math.min(s.len-len/2,hit.pos));
+      if(!volnyNaStene(wsel.w,p,len,wsel)){
+        let nasel=null;
+        for(let d=0.05; d<=1.2; d+=0.05){
+          if(volnyNaStene(wsel.w,p-d,len,wsel)){ nasel=p-d; break; }
+          if(volnyNaStene(wsel.w,p+d,len,wsel)){ nasel=p+d; break; } }
+        if(nasel===null) return; p=nasel; }
+      wsel.pos=+p.toFixed(2);
+      const g=elRoot.children.find(x=>x.userData.el===wsel);
+      if(g){ const mid=bodNaStene(s,wsel.pos); g.position.set(mid[0],0,mid[1]); }
+      if(wselHelper) wselHelper.update();
+      $('wpos').value=wsel.pos; $('wposv').textContent=wsel.pos.toFixed(2)+' m';
+    } return; }
+  if(drag&&fsel&&drag.kind==='fix'){ const p=floorHit(e); if(p){ const f=fsel.data;
+      let best=0,bd=1e9; stav.tracks.forEach((t,i)=>{
+        const oriX=t.ori==='X', perp=oriX?Math.abs(t.a-p.z):Math.abs(t.a-p.x), along=oriX?p.x:p.z;
+        const pen=perp+((along<t.od||along>t.do)?40:0); if(pen<bd){bd=pen;best=i;} });
+      const staryTr=f.tr; f.tr=best;
+      const t=trk(best); f.s=t.ori==='X'?p.x:p.z; clampSvNaTrack(f);
+      if(staryTr!==best){ const data=f; rebuildSvetla(); fsel=liveSv.find(r=>r.data===data); vyberSvitidlo(fsel); drag={kind:'fix'}; }
+      else aktualizujSvitidlo(fsel); } return; }
+});
+renderer.domElement.addEventListener('pointerup',e=>{
+  if(mode==='walk') return;
+  const klik = downPt && Math.hypot(e.clientX-downPt[0],e.clientY-downPt[1])<6;
+  downPt=null;
+  if(painting){ painting=false; orbit.enabled=true; uloz(); return; }
+  if(drag){ const byloWel=drag.kind==='wel', byloObj=drag.kind==='obj'; drag=null; orbit.enabled=true;
+    if(byloWel){ rebuildSteny(); attachWselHelper(); }
+    else if(byloObj&&sel&&$('autonika').checked){ const o=sel.userData.obj;
+      if(TYPY[o.t].resize&&dopasujNiku(o)) vyberObjekt(prebarviObjekt(sel,o)); }
+    uloz(); return; }
+  if(!klik) return;
+  if(wGhost&&wGhost.visible&&wGhost.userData.ok){
+    const {w,pos}=wGhost.userData;
+    const el2={t:wTyp,w,pos:+pos.toFixed(2),len:ELTYPY[wTyp].len};
+    stav.steny.push(el2); rebuildSteny(); uloz();
+    if(!e.shiftKey){ zrusRezimy(); vyberWallEl(el2); }
+    return;
+  }
+  if(ghost&&ghost.visible){
+    const o={t:ghostTyp,x:ghost.position.x,z:ghost.position.z,r:ghost.rotation.y};
+    if(TYPY[ghostTyp].barvy) o.c=TYPY[ghostTyp].defC??0;
+    stav.objekty.push(o); const g=vyrobObjekt(o); uloz();
+    if(!e.shiftKey){ const t=ghostTyp; zrusRezimy(); vyberObjekt(g); }
+    return;
+  }
+  if(svGhost&&svGhost.visible){
+    const {tr,s}=svGhost.userData; const t=trk(tr), oriX=t.ori==='X';
+    let tx,tz;
+    if(oriX){ tz = t.a<CZ ? Math.max(0.4,t.a-1.4) : Math.min(ROOM.hloubka-0.4,t.a+1.4); tx=+Math.min(ROOM.celo-0.4,s+0.25).toFixed(2); }
+    else    { tx = t.a<CX ? Math.max(0.4,t.a-1.4) : Math.min(ROOM.celo-0.4,t.a+1.4); tz=+Math.min(ROOM.hloubka-0.4,s+0.25).toFixed(2); }
+    const f={t:svTyp,tr,s:+s.toFixed(2),tx,tz,k:3000,dim:0.85};
+    if(SVITIDLA[svTyp].zoom) f.ang=36;
+    if(SVITIDLA[svTyp].drop) f.drop=1.2;
+    stav.svetla.push(f); const rec=vyrobSvitidlo(f); uloz();
+    if(!e.shiftKey){ zrusRezimy(); vyberSvitidlo(rec); }
+    return;
+  }
+  if(aiming&&fsel){ const p=floorHit(e); if(p){ const f=fsel.data;
+      f.tx=+p.x.toFixed(2); f.tz=+p.z.toFixed(2); aktualizujSvitidlo(fsel);
+      aimMarker.position.set(f.tx,0.02,f.tz);
+      aiming=false; $('fAim').classList.remove('act'); tipuj(null); uloz(); } return; }
+  // klik do prázdna → odznačit
+  ndcFromEvent(e); ray.setFromCamera(ndc,camera);
+  if(!ray.intersectObjects([...objRoot.children,...svRoot.children,...elRoot.children],true).length){
+    vyberObjekt(null); vyberSvitidlo(null); vyberWallEl(null);
+  }
+});
+renderer.domElement.addEventListener('contextmenu',e=>e.preventDefault());
+
+function malujBod(p){
+  const ci=Math.floor(p.x/GRID), cj=Math.floor(p.z/GRID);
+  if(ci<0||cj<0||ci>=FC||cj>=FR) return;
+  if(stav.podlaha[cj*FC+ci]===paintMat) return;
+  stav.podlaha[cj*FC+ci]=paintMat; drawCell(ci,cj); fTex.needsUpdate=true;
+}
+
+/* --- klávesy editoru --- */
+addEventListener('keydown',e=>{
+  if(e.target.tagName==='INPUT') return;
+  if(mode==='walk') return;
+  if(e.code==='Escape'){ zrusRezimy(); vyberObjekt(null); vyberSvitidlo(null); vyberWallEl(null); }
+  if(e.code==='KeyR'&&sel){ sel.rotation.y+=(e.shiftKey?-1:1)*Math.PI/4; sel.userData.obj.r=sel.rotation.y; selBox.update(); uloz(); }
+  if(e.code==='KeyR'&&ghost){ ghost.rotation.y+=(e.shiftKey?-1:1)*Math.PI/4; }
+  if((e.code==='Delete'||e.code==='Backspace')){ if(sel) smazObjekt(sel); else if(fsel) smazSvitidlo(fsel);
+    else if(wsel){ stav.steny=stav.steny.filter(x=>x!==wsel); vyberWallEl(null); rebuildSteny(); uloz(); } }
+  if(e.code==='KeyD'&&(e.ctrlKey||e.metaKey)){ e.preventDefault();
+    if(sel) $('oDup').onclick(); else if(fsel) $('fDup').onclick(); }
+});
+
+/* ===================================================================
+   REŽIMY — orbit / procházka / černý strop
+   =================================================================== */
+const orbit = new OrbitControls(camera, renderer.domElement);
+orbit.target.set(CX,1.1,CZ); orbit.enableDamping=true; orbit.dampingFactor=0.08;
+orbit.maxPolarAngle=Math.PI*0.49; orbit.minDistance=3; orbit.maxDistance=70; orbit.update();
+const walk = new PointerLockControls(camera, renderer.domElement);
+const keys={f:false,b:false,l:false,r:false}; const velocity=new THREE.Vector3(), dirv=new THREE.Vector3();
+let mode='orbit';
+const clampNum=(v,a,b)=>Math.max(a,Math.min(b,v));
+function clampInside(){ camera.position.x=clampNum(camera.position.x,0.4,ROOM.celo-0.4); camera.position.z=clampNum(camera.position.z,0.5,ROOM.hloubka-0.4); camera.position.y=1.62; }
+const hint=document.getElementById('hint'), btnOrbit=document.getElementById('btnOrbit'), btnWalk=document.getElementById('btnWalk');
+
+function aplikujCine(){
+  const on=stav.cine;
+  strop.material.map = on?stropCerna:stropBila; strop.material.needsUpdate=true;
+  strop.visible = (mode==='walk');   // v orbitu se řídí dynamicky v animate() podle výšky kamery
+  scene.background.set(on?0x26282c:0xdfe2e4);
+  renderer.toneMappingExposure = on?1.12:1.05;
+  document.getElementById('btnCine').classList.toggle('active',on);
+  nikaSvetla.forEach(l=>l.intensity = on?2.2:1.1);   // niky září zevnitř (silněji při černém stropu)
+  aplikujDenni();
+}
+function setOrbit(){ mode='orbit'; walk.unlock(); orbit.enabled=true;
+  camera.position.set(CX, ROOM.vyska*3.4, -ROOM.hloubka*0.5); orbit.target.set(CX,1.1,CZ); orbit.minDistance=3; orbit.update();
+  btnOrbit.classList.add('active'); btnWalk.classList.remove('active'); hint.style.display='none';
+  aplikujCine(); }
+function setWalk(){ mode='walk'; orbit.enabled=false;
+  zrusRezimy(); vyberObjekt(null); vyberSvitidlo(null);
+  editor.classList.remove('open'); $('btnEditor').classList.remove('active');
+  camera.position.set(vx/2,1.62,vd+0.6); camera.lookAt(5,1.5,12);
+  btnWalk.classList.add('active'); btnOrbit.classList.remove('active'); hint.style.display='flex';
+  strop.visible=true; aplikujCine(); }
+btnOrbit.onclick=setOrbit; btnWalk.onclick=setWalk; hint.onclick=()=>walk.lock();
+document.getElementById('btnCine').onclick=()=>{ stav.cine=!stav.cine; aplikujCine(); uloz(); };
+walk.addEventListener('lock',()=>hint.style.display='none');
+walk.addEventListener('unlock',()=>{ if(mode==='walk') hint.style.display='flex'; });
+addEventListener('keydown',e=>{ if(e.code==='KeyW'||e.code==='ArrowUp')keys.f=1; if(e.code==='KeyS'||e.code==='ArrowDown')keys.b=1; if(e.code==='KeyA'||e.code==='ArrowLeft')keys.l=1; if(e.code==='KeyD'||e.code==='ArrowRight')keys.r=1; });
+addEventListener('keyup',e=>{ if(e.code==='KeyW'||e.code==='ArrowUp')keys.f=0; if(e.code==='KeyS'||e.code==='ArrowDown')keys.b=0; if(e.code==='KeyA'||e.code==='ArrowLeft')keys.l=0; if(e.code==='KeyD'||e.code==='ArrowRight')keys.r=0; });
+
+/* ===================================================================
+   START
+   =================================================================== */
+function obnovVse(){
+  rebuildObjekty(); rebuildTracks(); rebuildSvetla(); rebuildSteny(); redrawFloor();
+  aplikujCine(); syncGlob(); aktualizujStats(); renderNavrhy();
+  vyberObjekt(null); vyberSvitidlo(null); vyberWallEl(null);
+}
+const ulozeno = localStorage.getItem(KLIC);
+if(!ulozeno || !aplikuj(ulozeno)) vychoziStav();
+obnovVse();
+window.__stav=stav; window.__cine=(on)=>{ stav.cine=on; aplikujCine(); };
+window.__api={ rebuildSteny, rebuildTracks, rebuildSvetla, obnovVse, volnyNaStene, serializuj, aplikuj, vychoziStav, uloz };
+
+const clock=new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate); const dt=Math.min(clock.getDelta(),0.05);
+  if(mode==='walk' && walk.isLocked){
+    velocity.x-=velocity.x*10*dt; velocity.z-=velocity.z*10*dt;
+    dirv.z=Number(keys.f)-Number(keys.b); dirv.x=Number(keys.r)-Number(keys.l); dirv.normalize();
+    const SPEED=30;
+    if(keys.f||keys.b) velocity.z-=dirv.z*SPEED*dt;
+    if(keys.l||keys.r) velocity.x-=dirv.x*SPEED*dt;
+    walk.moveRight(-velocity.x*dt); walk.moveForward(-velocity.z*dt); clampInside();
+  } else { orbit.update();
+    /* dollhouse: strop se ukáže, jakmile kamera sjede pod úroveň stropu (jinak by zakrýval interiér) */
+    strop.visible = camera.position.y < H-0.05;
+  }
+  if(selBox) selBox.update();
+  renderer.render(scene,camera);
+}
+animate();
+document.getElementById('loading').style.display='none';
+addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth,innerHeight); });
+addEventListener('beforeunload',()=>uloz(true));
 </script>
 </body>
 </html>
