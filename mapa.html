@@ -154,27 +154,23 @@ const PRICKA   = 0.12                  // tenká příčka UVNITŘ dvojice (dle 
 const PILIR    = 0.32                  // silnější pilíř MEZI dvojicemi
 const VYSTUP   = 0.14                  // o kolik dvojice couhá do obchodu
 
-/* ROZESTAVENÍ (Frederik 13. 9.): dvojice NEJSOU natěsno za sebou — každá stojí
-   u jednoho ze tří sloupů a mezi nimi je holá stěna. Sloupy jsou po 3,6 m
-   (3,5 / 7,1 / 10,7 m, dle dřívějšího zaměření), měřeno od zadní stěny.
-   Naměřená čísla 3,0087 a 2,5064 m jsou ŠÍŘKY dvojic, ne mezery mezi nimi. */
-const SLOUPY = [3.5, 7.1, 10.7]
-/* Dvojice od zadní stěny dopředu: 3. (u zadní stěny) · 2. · 1. (u pokladny).
-   Šířky: 3. dvojice změřená není → beru průměr zbylých dvou; 2. = 2,5064; 1. = 3,0087. */
-const SIRKA_DVOJICE = [ (M.nika2_3.v + M.nika1_2.v)/2, M.nika2_3.v, M.nika1_2.v ]
+/* ROZESTAVENÍ (Frederik 13. 9.): z pravé stěny čnějí do obchodu TŘI ŽEBRA
+   (kolmé přepážky) — jeho schéma  _l_l_  . V každém žebru jsou DVĚ niky
+   za sebou → 6 nik. „Začátek niky až k té zdi je nika tak dlouhá“ = délka
+   žebra 3,5766 m (druhé měření 3,6601 m).                                  */
+const ZEBRA_Z  = [3.5, 7.1, 10.7]          // pozice žeber od zadní stěny (u sloupů)
+const ZEBRO_L  = M.nikaOdPrave.v           // 3,5766 m — jak daleko žebro čnělo do obchodu
+const ZEBRO_T  = 0.45                      // tloušťka žebra
+const OKRAJ    = 0.16                      // travertinový okraj na koncích žebra
+const NIKA_W   = (ZEBRO_L - 2*OKRAJ - PRICKA) / 2   // ≈ 1,58 m (výkres 1,69–2,27)
 
-const DVOJICE = [], NIKY_OS = []
-;(function rozvrhni(){
-  SLOUPY.forEach((zs,d)=>{
-    const w = SIRKA_DVOJICE[d]              // celková šířka vystupujícího bloku
-    const nw = (w - PRICKA)/2               // světlá šířka jedné niky
-    const od = zs - w/2, doo = zs + w/2
-    NIKY_OS.push({z: od + nw/2, w: nw})
-    NIKY_OS.push({z: doo - nw/2, w: nw})
-    DVOJICE.push({od, do:doo, stred:zs, sirka:w, nikaW:nw})
-  })
-})()
-const RADA_OD = DVOJICE[0].od, RADA_DO = DVOJICE[2].do
+/* Osy nik podél žebra (souřadnice X, od pravé zdi dovnitř) */
+const ZEBRA = ZEBRA_Z.map((z,i)=>{
+  const x0 = S - ZEBRO_L                    // volný konec žebra
+  const n1 = x0 + OKRAJ + NIKA_W/2
+  const n2 = n1 + NIKA_W + PRICKA
+  return { z, cislo:3-i, x0, niky:[n1,n2] }
+})
 
 /* ==========================================================================
    OKRUHY — přesně jak je Frederik nadiktoval ve videu (03:20–05:50)
@@ -293,7 +289,7 @@ root.add(strop)
    pult dlouhý 2,3 m + pult krátký 1,55 m, hloubka 0,6 m, výška 0,95 m. */
 const pultZ = D - 2.35
 const RAM_A = 2.3, RAM_B = 1.55, PULT_T = 0.60, PULT_H = 0.90
-const pultX = PRED_LIC - VYSTUP - PULT_T/2 - .10      // podél líce nik
+const pultX = S - PULT_T/2 - .10                      // pokladna u pravé zdi
 // delší rameno podél řady nik
 const pultA = box(PULT_T, PULT_H, RAM_A, mat.travertin, pultX, PULT_H/2, pultZ)
 box(PULT_T+.05, .05, RAM_A+.05, mat.drevo, pultX, PULT_H+.025, pultZ)
@@ -310,64 +306,57 @@ klikaci.push({mesh:pultB, okruh:'NEURCENO', nm:'Pokladna — okruh NEURČEN'})
    a prosvětlenými nikami mezi nimi. Frederik (2. video): „ta nika je plně
    na zdi“ — je zapuštěná v téhle předstěně, nestojí volně.               */
 const ostenim = new THREE.MeshStandardMaterial({color:0xc6b5a1, roughness:.6, metalness:.04})
-const xZadPred = PRED_LIC + PRED_D          // rub konstrukce (u pravé zdi)
+const hOtv = NIKA_NAD - NIKA_PAR
 
-/* Konstrukce: pilíře a parapety/nadpraží. Dvojice couhá o VYSTUP do obchodu. */
-;(function predstena(){
-  // rub je u všech stejný, líc se u dvojic předsazuje → blok je o VYSTUP hlubší
-  function pas(z0,z1,y,h,dx){
-    if(z1-z0 < .004) return
-    const hl = PRED_D + dx
-    box(hl, h, z1-z0, mat.travertin, xZadPred - hl/2, y + h/2, (z0+z1)/2)
-  }
-  let z = RADA_OD
-  DVOJICE.forEach((dv)=>{
-    if(dv.od > z) pas(z, dv.od, 0, V, 0)                  // holá stěna MEZI dvojicemi
-    const a = dv.od, b = a + dv.nikaW
-    const c = b + PRICKA, e = c + dv.nikaW
-    pas(a, b, 0, NIKA_PAR, VYSTUP);  pas(a, b, NIKA_NAD, V-NIKA_NAD, VYSTUP)
-    pas(b, c, 0, V, VYSTUP)                               // příčka uvnitř dvojice
-    pas(c, e, 0, NIKA_PAR, VYSTUP);  pas(c, e, NIKA_NAD, V-NIKA_NAD, VYSTUP)
-    z = dv.do
-  })
-})()
-
-/* Samotné niky */
-const xLic = PRED_LIC - VYSTUP              // líc předsazené dvojice
-NIKY_OS.forEach((n,i)=>{
-  const z = n.z, NIKA_W = n.w
+ZEBRA.forEach((zb)=>{
   const g = new THREE.Group(); root.add(g)
-  const hOtv = NIKA_NAD - NIKA_PAR
-  const xZad = xLic + NIKA_D                // zadní plát niky
+  const zc = zb.z, xStr = S - ZEBRO_L/2
+  const zLic = zc - ZEBRO_T/2                  // bok žebra, do kterého se niky otevírají
 
-  // ostění — boky, dno, strop
-  box(NIKA_D, hOtv, .04, ostenim, xLic+NIKA_D/2, (NIKA_PAR+NIKA_NAD)/2, z-NIKA_W/2, g)
-  box(NIKA_D, hOtv, .04, ostenim, xLic+NIKA_D/2, (NIKA_PAR+NIKA_NAD)/2, z+NIKA_W/2, g)
-  box(NIKA_D, .04, NIKA_W, ostenim, xLic+NIKA_D/2, NIKA_PAR, z, g)
-  box(NIKA_D, .04, NIKA_W, ostenim, xLic+NIKA_D/2, NIKA_NAD, z, g)
+  /* tělo žebra — plné nad nikami a pod nimi, plus okraje a příčka */
+  function kus(x0,x1,y,h){
+    if(x1-x0 < .004) return
+    box(x1-x0, h, ZEBRO_T, mat.travertin, (x0+x1)/2, y+h/2, zc, g)
+  }
+  const x0 = zb.x0
+  kus(x0, x0+OKRAJ, 0, V)                                     // čelo žebra (volný konec)
+  kus(S-OKRAJ, S, 0, V)                                       // u zdi
+  zb.niky.forEach((nx,k)=>{
+    kus(nx-NIKA_W/2, nx+NIKA_W/2, 0, NIKA_PAR)                // parapet pod nikou
+    kus(nx-NIKA_W/2, nx+NIKA_W/2, NIKA_NAD, V-NIKA_NAD)       // nadpraží
+    if(k===0) kus(nx+NIKA_W/2, nx+NIKA_W/2+PRICKA, 0, V)      // příčka mezi nikami
+  })
+  // druhá polovina tloušťky žebra za nikami zůstává plná
+  box(ZEBRO_L, V, ZEBRO_T-NIKA_D, mat.travertin, xStr, V/2, zc+NIKA_D/2, g)
 
-  // zadní prosvětlený plát (okrový štuk) — tohle svítí
-  const plat = new THREE.Mesh(
-    new THREE.BoxGeometry(.06, hOtv-.06, NIKA_W-.06),
-    new THREE.MeshStandardMaterial({color:0xd9b877,
-      emissive:new THREE.Color(OKRUHY.NIKY.barva), emissiveIntensity:1.1, roughness:.85}))
-  plat.position.set(xZad-.03, (NIKA_PAR+NIKA_NAD)/2, z); g.add(plat)
+  /* niky v boku žebra */
+  zb.niky.forEach((nx,k)=>{
+    box(NIKA_W, .04, NIKA_D, ostenim, nx, NIKA_PAR, zLic+NIKA_D/2, g)       // dno
+    box(NIKA_W, .04, NIKA_D, ostenim, nx, NIKA_NAD, zLic+NIKA_D/2, g)       // strop
+    box(.04, hOtv, NIKA_D, ostenim, nx-NIKA_W/2, (NIKA_PAR+NIKA_NAD)/2, zLic+NIKA_D/2, g)
+    box(.04, hOtv, NIKA_D, ostenim, nx+NIKA_W/2, (NIKA_PAR+NIKA_NAD)/2, zLic+NIKA_D/2, g)
 
-  // šatní tyč ø32 ve výšce 1700 mm — dle výkresu VYKRES-MINSKA (6. 9. 2026).
-  // Police tu NENÍ: ve videu žádnou nevidím, byla jen ve starším 3D návrhu.
-  const tyc = new THREE.Mesh(new THREE.CylinderGeometry(.016,.016,NIKA_W-.01,12),
-    new THREE.MeshStandardMaterial({color:0xc9ccd2, roughness:.3, metalness:.9}))
-  tyc.rotation.x = Math.PI/2
-  tyc.position.set(xLic+NIKA_D*.5, 1.70, z); g.add(tyc)
+    const plat = new THREE.Mesh(
+      new THREE.BoxGeometry(NIKA_W-.06, hOtv-.06, .06),
+      new THREE.MeshStandardMaterial({color:0xd9b877,
+        emissive:new THREE.Color(OKRUHY.NIKY.barva), emissiveIntensity:1.1, roughness:.85}))
+    plat.position.set(nx, (NIKA_PAR+NIKA_NAD)/2, zLic+NIKA_D-.03); g.add(plat)
 
-  const sv = new THREE.PointLight(OKRUHY.NIKY.barva, 1.7, 3.8, 1.8)
-  sv.position.set(xLic+NIKA_D*.4, NIKA_NAD-.18, z); g.add(sv)
-  svetla.push({mesh:plat, light:sv, okruh:'NIKY', zakladni:1.1, zakladniInt:1.7})
+    // šatní tyč ø32 ve výšce 1700 mm dle výkresu VYKRES-MINSKA (police tam není)
+    const tyc = new THREE.Mesh(new THREE.CylinderGeometry(.016,.016,NIKA_W-.01,12),
+      new THREE.MeshStandardMaterial({color:0xc9ccd2, roughness:.3, metalness:.9}))
+    tyc.rotation.z = Math.PI/2
+    tyc.position.set(nx, 1.70, zLic+NIKA_D*.5); g.add(tyc)
 
-  klikaci.push({mesh:plat, okruh:'NIKY', nm:'Nika '+(6-i)+' — vnitřní osvětlení (ze zásuvek)'})
+    const sv = new THREE.PointLight(OKRUHY.NIKY.barva, 1.7, 3.8, 1.8)
+    sv.position.set(nx, NIKA_NAD-.18, zLic+NIKA_D*.4); g.add(sv)
+    svetla.push({mesh:plat, light:sv, okruh:'NIKY', zakladni:1.1, zakladniInt:1.7})
+    klikaci.push({mesh:plat, okruh:'NIKY', nm:`Nika ${zb.cislo}${k?'b':'a'} — vnitřní osvětlení (ze zásuvek)`})
+  })
+
+  popisek(zb.cislo+'. NIKA (dvojice)', xStr, V-.35, zc)
 })
-/* Popisky po dvojicích — „první / druhá / třetí nika“, jak o nich Frederik mluví */
-DVOJICE.forEach((dv,i)=>popisek((3-i)+'. NIKA (dvojice)', xLic-.15, NIKA_NAD+.3, dv.stred))
+const xLic = S - ZEBRO_L        // volné konce žeber — hranice „uličky“ před nimi
 
 /* ---------- levá strana: styling + zrcadlo ---------- */
 const stylZ = M.styling.v
@@ -566,18 +555,18 @@ function svitidlo(x,z,okruh,typ,parent){
 
 /* SV1 — jen nika 1 a nika 2. Frederik (03:20) říká doslova:
    „Osvětlení na první a na druhé nice je vedeno z jističe SV1.“ */
-svitidlo(xLic-.6, DVOJICE[2].stred, 'SV1','bod')   // nad 1. nikou (dvojicí) — od vstupu
-svitidlo(xLic-.6, DVOJICE[1].stred, 'SV1','bod')   // nad 2. nikou (dvojicí)
+svitidlo(S-ZEBRO_L*0.5, ZEBRA[2].z, 'SV1','bod')   // nad 1. žebrem (od vstupu)
+svitidlo(S-ZEBRO_L*0.5, ZEBRA[1].z, 'SV1','bod')   // nad 2. žebrem
 
 /* NEURČENO — Frederik tahle světla ukázal, ale okruh u nich neřekl:
    03:05 „Tohle je osvětlení nad pokladnou“ · 03:16 „Osvětlení na třetí nice“ */
 svitidlo(pultX, pultZ+.7, 'NEURCENO','tubus')
 svitidlo(pultX, pultZ-.7, 'NEURCENO','tubus')
-svitidlo(xLic-.6, DVOJICE[0].stred, 'NEURCENO','bod')  // nad 3. nikou (dvojicí)
+svitidlo(S-ZEBRO_L*0.5, ZEBRA[0].z, 'NEURCENO','bod')  // nad 3. žebrem
 
 /* Ambient — „tohle boční, tedy této prostřední světla, jsou na jističi SV1“
    (04:40–04:49). Střední pruh hlavního prostoru, směrem dozadu ke kabinkám. */
-const xStred = (PRED_LIC-VYSTUP)/2
+const xStred = (S-ZEBRO_L)/2
 svitidlo(xStred, 1.5, 'AMBIENT','bod')
 svitidlo(xStred, 3.2, 'AMBIENT','bod')
 svitidlo(xStred, 4.9, 'AMBIENT','bod')
@@ -690,7 +679,7 @@ document.querySelectorAll('[data-view]').forEach(b=>{
   b.onclick = ()=>{
     const v = b.dataset.view
     // hlavní prostor je VLEVO od předstěny s nikami — kamera patří do něj
-    const xChodba = (PRED_LIC-VYSTUP)/2
+    const xChodba = (S-ZEBRO_L)/2
     if(v==='pudorys'){ camera.position.set(S/2, 26, D/2+.01); controls.target.set(S/2,0,D/2-1.5) }
     if(v==='perspektiva'){ camera.position.set(S/2-9, 11, D+11); controls.target.set(S/2,1.2,D/2) }
     if(v==='vstup'){ camera.position.set(xChodba, 1.65, D-1.4); controls.target.set(xChodba+1.2,1.5,1.5) }
