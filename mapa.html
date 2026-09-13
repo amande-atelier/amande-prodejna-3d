@@ -158,7 +158,14 @@ const VYSTUP   = 0.14                  // o kolik dvojice couhá do obchodu
    (kolmé přepážky) — jeho schéma  _l_l_  . V každém žebru jsou DVĚ niky
    za sebou → 6 nik. „Začátek niky až k té zdi je nika tak dlouhá“ = délka
    žebra 3,5766 m (druhé měření 3,6601 m).                                  */
-const ZEBRA_Z  = [3.5, 7.1, 10.7]          // pozice žeber od zadní stěny (u sloupů)
+/* Pozice žeber podle nákresu (13. 9. 2026) a naměřených rozestupů:
+   3. žebro je 3,2591 m od zadní stěny, mezi 3. a 2. je 2,5064 m,
+   mezi 2. a 1. je 3,0087 m. Před nimi (ke vstupu) stojí pokladna do L. */
+const ZEBRA_Z  = [
+  M.nika3_zed.v,                                        // 3. žebro — u zadní stěny
+  M.nika3_zed.v + M.nika2_3.v,                          // 2. žebro
+  M.nika3_zed.v + M.nika2_3.v + M.nika1_2.v,            // 1. žebro
+]
 const ZEBRO_L  = M.nikaOdPrave.v           // 3,5766 m — jak daleko žebro čnělo do obchodu
 const ZEBRO_T  = 0.45                      // tloušťka žebra
 const OKRAJ    = 0.16                      // travertinový okraj na koncích žebra
@@ -282,24 +289,27 @@ strop.rotation.x = Math.PI/2
 strop.position.set(S/2, V, D/2); strop.visible = false
 root.add(strop)
 
-/* ---------- pravá strana: pokladna do „L“ ----------
-   Frederik (2. video, 00:45): „A ta pokladna je takový L.“                */
-/* Pokladna stojí na konci řady nik, v hlavním prostoru — výkres ji značí
-   šipkou „← pokladna“ hned u niky 1. Délky ramen z dřívějšího návrhu:
-   pult dlouhý 2,3 m + pult krátký 1,55 m, hloubka 0,6 m, výška 0,95 m. */
-const pultZ = D - 2.35
-const RAM_A = 2.3, RAM_B = 1.55, PULT_T = 0.60, PULT_H = 0.90
-const pultX = S - PULT_T/2 - .10                      // pokladna u pravé zdi
-// delší rameno podél řady nik
-const pultA = box(PULT_T, PULT_H, RAM_A, mat.travertin, pultX, PULT_H/2, pultZ)
-box(PULT_T+.05, .05, RAM_A+.05, mat.drevo, pultX, PULT_H+.025, pultZ)
-// kratší rameno kolmo do prostoru → tvar L
-const rohZ = pultZ - RAM_A/2 + PULT_T/2
-const pultB = box(RAM_B, PULT_H, PULT_T, mat.travertin, pultX-RAM_B/2+PULT_T/2, PULT_H/2, rohZ)
-box(RAM_B+.05, .05, PULT_T+.05, mat.drevo, pultX-RAM_B/2+PULT_T/2, PULT_H+.025, rohZ)
-popisek('POKLADNA (L)', pultX-.7, 1.4, pultZ)
+/* ---------- POKLADNA — L spojené se sloupem ----------
+   Frederik (2. video 00:45 + nákres): „pokladna se sloupem je spojena
+   do takového L jak niky“. Stojí u pravé stěny mezi posledním žebrem
+   a vstupem; delší rameno vybíhá od zdi do obchodu, kratší podél zdi.  */
+const RAM_A = 2.30, RAM_B = 1.55, PULT_T = 0.60, PULT_H = 0.90
+const pultZ = ZEBRA_Z[2] + 2.60                      // až za posledním žebrem, směrem ke vstupu
+const SLOUP = 0.13                                    // sloup 13×13 cm
+// rameno kolmo od pravé zdi do obchodu (jako žebra)
+const pultA = box(RAM_A, PULT_H, PULT_T, mat.travertin, S-RAM_A/2, PULT_H/2, pultZ)
+box(RAM_A+.05, .05, PULT_T+.05, mat.drevo, S-RAM_A/2, PULT_H+.025, pultZ)
+// kratší rameno podél zdi → tvar L
+const pultB = box(PULT_T, PULT_H, RAM_B, mat.travertin,
+  S-PULT_T/2, PULT_H/2, pultZ + RAM_B/2 + PULT_T/2)
+box(PULT_T+.05, .05, RAM_B+.05, mat.drevo,
+  S-PULT_T/2, PULT_H+.025, pultZ + RAM_B/2 + PULT_T/2)
+// sloup, se kterým je pokladna spojená — vytažený do stropu
+box(SLOUP+.06, V, SLOUP+.06, mat.travertin, S-RAM_A+SLOUP/2, V/2, pultZ)
+popisek('POKLADNA (L) + sloup', S-RAM_A/2, 1.45, pultZ)
 klikaci.push({mesh:pultA, okruh:'NEURCENO', nm:'Pokladna — okruh NEURČEN'})
 klikaci.push({mesh:pultB, okruh:'NEURCENO', nm:'Pokladna — okruh NEURČEN'})
+const pultX = S - RAM_A/2
 
 /* ---------- PŘEDSAZENÁ STĚNA S NIKAMI ----------
    Souvislá travertinová předstěna 3.5766 m od pravé obvodové zdi, s pilíři
@@ -359,10 +369,19 @@ ZEBRA.forEach((zb)=>{
 const xLic = S - ZEBRO_L        // volné konce žeber — hranice „uličky“ před nimi
 
 /* ---------- levá strana: styling + zrcadlo ---------- */
+/* STĚNA STYLING ČÁSTI — Frederik (nákres): „stěna u té styling části,
+   kde budou zrcadla“. Není to jen zrcadlo na obvodové zdi, ale samostatná
+   příčka vybíhající od levé stěny do prostoru; zrcadlo je na ní.        */
 const stylZ = M.styling.v
-const stylD = D - 1.4 - stylZ        // „zrcadlo přes celé“ — celá stěna stylingové části
-const zrcadlo = box(.06, 2.15, stylD, mat.zrcadlo, .12, 1.25, stylZ + stylD/2)
-popisek('ZRCADLO — přes celou stěnu', .9, 2.75, stylZ + stylD - .5)
+const stylD = D - 1.4 - stylZ        // „zrcadlo přes celé“ — po celé délce té stěny
+const STYL_T = 0.16                  // tloušťka příčky
+const STYL_VYBEH = 1.25              // jak daleko od levé zdi vybíhá čelo
+
+box(STYL_T, V, stylD, mat.stena, STYL_VYBEH, V/2, stylZ + stylD/2)          // příčka
+box(STYL_VYBEH, V, STYL_T, mat.stena, STYL_VYBEH/2, V/2, stylZ)             // návrat k levé zdi
+const zrcadlo = box(.05, 2.15, stylD-.1, mat.zrcadlo,
+  STYL_VYBEH + STYL_T/2 + .03, 1.25, stylZ + stylD/2)                       // zrcadlo na příčce
+popisek('STĚNA STYLINGU — zrcadla', STYL_VYBEH+.5, 2.75, stylZ + stylD - .5)
 const stylZona = new THREE.Mesh(new THREE.PlaneGeometry(2.6, stylD),
   new THREE.MeshStandardMaterial({color:0x8a7f6d, roughness:.9, transparent:true, opacity:.3}))
 stylZona.rotation.x = -Math.PI/2
