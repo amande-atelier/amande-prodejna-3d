@@ -379,12 +379,14 @@ const xLic = S - ZEBRO_L        // volné konce žeber — hranice „uličky“
 const stylZ  = M.styling.v           // 5,8853 m od zadní stěny
 const STYL_L = 2.50                  // délka — jak daleko čouhá do prodejny
 const STYL_H = 2.50                  // výška — nižší než strop (3,1)
-const STYL_T = 0.16                  // tloušťka
+const STYL_T = 0.10                  // tloušťka — tenká příčka, jak ji kreslíš
 
 const stylStena = box(STYL_L, STYL_H, STYL_T, mat.stena, STYL_L/2, STYL_H/2, stylZ)
 // zrcadla na obou lících stěny
-const zrcadlo  = box(STYL_L-.1, 2.05, .04, mat.zrcadlo, STYL_L/2, 1.15, stylZ + STYL_T/2 + .02)
-box(STYL_L-.1, 2.05, .04, mat.zrcadlo, STYL_L/2, 1.15, stylZ - STYL_T/2 - .02)
+const zrcadlo  = box(STYL_L-.06, STYL_H-.12, .015, mat.zrcadlo,
+  STYL_L/2, STYL_H/2, stylZ + STYL_T/2 + .008)
+box(STYL_L-.06, STYL_H-.12, .015, mat.zrcadlo,
+  STYL_L/2, STYL_H/2, stylZ - STYL_T/2 - .008)
 popisek('STĚNA STYLINGU — zrcadla  2,50 × 2,50', STYL_L/2, STYL_H+.25, stylZ)
 klikaci.push({mesh:stylStena, okruh:'SV34', nm:'Styling — SV3-4'})
 const stylD = STYL_L                 // pro rozmístění štendrů níž
