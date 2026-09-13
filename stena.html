@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>Amande — postav stěnu</title>
+<style>
+  :root{ --bg:#0f0f11; --panel:#17171b; --line:#2a2a31; --tx:#e8e4dd; --dim:#8b8680; --acc:#c9a227; }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);overscroll-behavior:none;
+    font:15px/1.45 -apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden;touch-action:none}
+  #app{position:fixed;inset:0 0 auto 0;height:56vh}
+  canvas{display:block;touch-action:none}
+
+  #ovl{position:fixed;left:0;right:0;bottom:0;height:44vh;background:var(--panel);
+    border-top:1px solid var(--line);padding:12px 14px 16px;overflow-y:auto;z-index:10}
+  h1{font-size:13px;letter-spacing:.12em;text-transform:uppercase;margin:0 0 3px;font-weight:600}
+  .hint{color:var(--dim);font-size:12px;margin-bottom:12px}
+
+  .row{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+  .row label{width:74px;flex:none;font-size:12.5px;color:var(--dim)}
+  .row .v{width:74px;flex:none;text-align:right;font-variant-numeric:tabular-nums;
+    font-weight:600;font-size:13px}
+  input[type=range]{flex:1;height:34px;accent-color:var(--acc);background:transparent}
+
+  .btns{display:flex;gap:8px;margin-top:6px}
+  button{flex:1;padding:13px 8px;background:#1d1d22;border:1px solid var(--line);
+    border-radius:9px;color:var(--tx);font-size:13.5px;font-weight:600;cursor:pointer}
+  button.act{background:var(--acc);color:#1a1a1a;border-color:var(--acc)}
+  button.big{padding:16px;font-size:15px}
+
+  #vysledek{margin-top:12px;padding:11px;background:#13130f;border:1px solid var(--acc);
+    border-radius:8px;font:12.5px/1.5 ui-monospace,Menlo,Consolas,monospace;
+    white-space:pre-wrap;word-break:break-word;display:none}
+  .ok{color:var(--acc)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+
+<div id="ovl">
+  <h1>Postav stěnu stylingu</h1>
+  <div class="hint">Táhni prstem po ploše = posun stěny. Posuvníky = otočení a rozměr.
+    Až bude sedět, dej <b>Hotovo</b> a pošli mi ten text.</div>
+
+  <div class="row"><label>Otočení</label>
+    <input type="range" id="rot" min="0" max="355" step="5"><span class="v" id="rotv"></span></div>
+  <div class="row"><label>Délka</label>
+    <input type="range" id="len" min="0.5" max="8" step="0.05"><span class="v" id="lenv"></span></div>
+  <div class="row"><label>Výška</label>
+    <input type="range" id="hei" min="0.5" max="3.1" step="0.05"><span class="v" id="heiv"></span></div>
+  <div class="row"><label>Tloušťka</label>
+    <input type="range" id="thk" min="0.05" max="0.6" step="0.01"><span class="v" id="thkv"></span></div>
+
+  <div class="btns">
+    <button id="v-shora" class="act">Shora</button>
+    <button id="v-3d">3D</button>
+    <button id="v-vstup">Od vstupu</button>
+  </div>
+  <div class="btns">
+    <button id="hotovo" class="big">✓ Hotovo — ukaž mi čísla</button>
+  </div>
+  <div id="vysledek"></div>
+</div>
+
+<script type="importmap">
+{"imports":{
+  "three":"https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three'
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js'
+
+/* Rozměry prodejny — stejné jako v mapě */
+const D = 13.7117, S = 8.8491, V = 3.10
+const ZEBRO_L = 3.5766, ZEBRO_T = 0.45
+const ZEBRA_Z = [3.2591, 3.2591+2.5064, 3.2591+2.5064+3.0087]
+
+const scene = new THREE.Scene()
+scene.background = new THREE.Color(0x0f0f11)
+const camera = new THREE.PerspectiveCamera(50, 1, .1, 200)
+const renderer = new THREE.WebGLRenderer({antialias:true})
+renderer.setPixelRatio(Math.min(devicePixelRatio,2))
+document.getElementById('app').appendChild(renderer.domElement)
+const controls = new OrbitControls(camera, renderer.domElement)
+controls.enableDamping = true; controls.dampingFactor = .08
+
+scene.add(new THREE.AmbientLight(0xffffff, 1.5))
+const dl = new THREE.DirectionalLight(0xffffff, 1.1); dl.position.set(-8,18,14); scene.add(dl)
+
+const root = new THREE.Group(); scene.add(root)
+const matPodl = new THREE.MeshStandardMaterial({color:0x8f8a80, roughness:.9})
+const matZed  = new THREE.MeshStandardMaterial({color:0xdedad2, roughness:.95})
+const matNika = new THREE.MeshStandardMaterial({color:0xc0ad93, roughness:.7})
+const matPult = new THREE.MeshStandardMaterial({color:0xb08a52, roughness:.6})
+
+function box(w,h,d,m,x,y,z){
+  const me = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), m)
+  me.position.set(x,y,z); root.add(me); return me
+}
+
+/* podlaha + obvod */
+const podlaha = new THREE.Mesh(new THREE.PlaneGeometry(S,D), matPodl)
+podlaha.rotation.x = -Math.PI/2; podlaha.position.set(S/2,0,D/2); root.add(podlaha)
+box(.1, V, D, matZed, 0,   V/2, D/2)
+box(.1, V, D, matZed, S,   V/2, D/2)
+box(S,  V, .1, matZed, S/2, V/2, 0)
+// vstup — jen nízký práh, ať je vidět kam se kouká
+box(S, .12, .1, matPult, S/2, .06, D)
+
+/* žebra s nikami (reference — nedá se s nimi hýbat) */
+ZEBRA_Z.forEach((z,i)=>{
+  box(ZEBRO_L, V, ZEBRO_T, matNika, S-ZEBRO_L/2, V/2, z)
+  const sv = new THREE.PointLight(0xffd9a8, 6, 6, 1.8)
+  sv.position.set(S-ZEBRO_L*0.6, 2.1, z-ZEBRO_T/2-.3); root.add(sv)
+})
+/* pokladna L + sloup (reference) */
+const pultZ = ZEBRA_Z[2] + 2.60
+box(2.30, .9, .60, matPult, S-1.15, .45, pultZ)
+box(.60, .9, 1.55, matPult, S-2.30+.30, .45, pultZ+1.075)
+box(.19, V, .19, matNika, S-2.30+.30, V/2, pultZ)
+
+/* ====== STĚNA, KTEROU FREDERIK STAVÍ ====== */
+const st = { x: 1.25, z: 5.8853, rot: 0, len: 2.50, hei: 2.50, thk: 0.10 }
+const matStena = new THREE.MeshStandardMaterial({color:0xc9a227, roughness:.5,
+  emissive:0x3a2f0c, emissiveIntensity:.6})
+const matZrc = new THREE.MeshStandardMaterial({color:0xc4ccd2, roughness:.05, metalness:.95})
+const stena = new THREE.Group(); root.add(stena)
+let telo=null, zrcA=null, zrcB=null
+function prestav(){
+  ;[telo,zrcA,zrcB].forEach(m=>{ if(m){ stena.remove(m); m.geometry.dispose() } })
+  telo = new THREE.Mesh(new THREE.BoxGeometry(st.len, st.hei, st.thk), matStena)
+  telo.position.y = st.hei/2; stena.add(telo)
+  zrcA = new THREE.Mesh(new THREE.BoxGeometry(st.len-.06, st.hei-.12, .015), matZrc)
+  zrcA.position.set(0, st.hei/2, st.thk/2+.01); stena.add(zrcA)
+  zrcB = new THREE.Mesh(new THREE.BoxGeometry(st.len-.06, st.hei-.12, .015), matZrc)
+  zrcB.position.set(0, st.hei/2, -st.thk/2-.01); stena.add(zrcB)
+  stena.position.set(st.x, 0, st.z)
+  stena.rotation.y = st.rot*Math.PI/180
+  sync()
+}
+/* šipka, ať je poznat, kam stěna „míří“ */
+const sipka = new THREE.ArrowHelper(new THREE.Vector3(1,0,0), new THREE.Vector3(0,.05,0), 1.1, 0xc9a227, .3, .2)
+stena.add(sipka)
+
+/* ====== ovládání ====== */
+const $ = id => document.getElementById(id)
+function sync(){
+  $('rot').value=st.rot; $('rotv').textContent=st.rot+'°'
+  $('len').value=st.len; $('lenv').textContent=st.len.toFixed(2)+' m'
+  $('hei').value=st.hei; $('heiv').textContent=st.hei.toFixed(2)+' m'
+  $('thk').value=st.thk; $('thkv').textContent=(st.thk*100).toFixed(0)+' cm'
+}
+$('rot').oninput = e => { st.rot=+e.target.value; stena.rotation.y=st.rot*Math.PI/180; sync() }
+$('len').oninput = e => { st.len=+e.target.value; prestav() }
+$('hei').oninput = e => { st.hei=+e.target.value; prestav() }
+$('thk').oninput = e => { st.thk=+e.target.value; prestav() }
+
+/* tažení stěny po podlaze */
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2()
+let tahnu = false
+function podlahaHit(ev){
+  const r = renderer.domElement.getBoundingClientRect()
+  ndc.x = ((ev.clientX-r.left)/r.width)*2-1
+  ndc.y = -((ev.clientY-r.top)/r.height)*2+1
+  ray.setFromCamera(ndc, camera)
+  const h = ray.intersectObject(podlaha, false)[0]
+  return h ? h.point : null
+}
+renderer.domElement.addEventListener('pointerdown', ev=>{
+  const r = renderer.domElement.getBoundingClientRect()
+  ndc.x = ((ev.clientX-r.left)/r.width)*2-1
+  ndc.y = -((ev.clientY-r.top)/r.height)*2+1
+  ray.setFromCamera(ndc, camera)
+  if(ray.intersectObject(stena, true).length){ tahnu=true; controls.enabled=false }
+})
+renderer.domElement.addEventListener('pointermove', ev=>{
+  if(!tahnu) return
+  const p = podlahaHit(ev); if(!p) return
+  st.x = Math.max(0, Math.min(S, p.x))
+  st.z = Math.max(0, Math.min(D, p.z))
+  stena.position.set(st.x, 0, st.z)
+})
+addEventListener('pointerup', ()=>{ tahnu=false; controls.enabled=true })
+
+/* pohledy */
+function pohled(v){
+  if(v==='shora'){ camera.position.set(S/2, 22, D/2+.01); controls.target.set(S/2,0,D/2) }
+  if(v==='3d'){ camera.position.set(-6, 10, D+8); controls.target.set(S/2,1,D/2) }
+  if(v==='vstup'){ camera.position.set(S/2-1.5, 1.7, D-1.2); controls.target.set(S/2-1,1.5,1.5) }
+  document.querySelectorAll('.btns button').forEach(b=>b.classList.remove('act'))
+  $('v-'+v).classList.add('act')
+}
+$('v-shora').onclick=()=>pohled('shora')
+$('v-3d').onclick   =()=>pohled('3d')
+$('v-vstup').onclick=()=>pohled('vstup')
+
+/* výsledek */
+$('hotovo').onclick = ()=>{
+  const el = $('vysledek')
+  const txt =
+`STĚNA STYLINGU
+poloha od levé zdi:   ${st.x.toFixed(2)} m
+poloha od zadní zdi:  ${st.z.toFixed(2)} m
+otočení:              ${st.rot}°
+délka:                ${st.len.toFixed(2)} m
+výška:                ${st.hei.toFixed(2)} m
+tloušťka:             ${(st.thk*100).toFixed(0)} cm`
+  el.style.display='block'
+  el.innerHTML = '<div class="ok">Pošli mi tohle:</div>'+txt
+  if(navigator.clipboard) navigator.clipboard.writeText(txt).catch(()=>{})
+  el.scrollIntoView({behavior:'smooth'})
+}
+
+/* běh */
+function resize(){
+  const el = document.getElementById('app')
+  const w = el.clientWidth, h = el.clientHeight
+  camera.aspect = w/h; camera.updateProjectionMatrix(); renderer.setSize(w,h)
+}
+addEventListener('resize', resize)
+prestav(); pohled('shora'); resize()
+;(function smycka(){ requestAnimationFrame(smycka); controls.update(); renderer.render(scene,camera) })()
+</script>
+</body>
+</html>
