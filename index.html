@@ -123,6 +123,7 @@
   <button id="btnOrbit" class="active">🔭 Otáčení</button>
   <button id="btnWalk">🚶 Procházka</button>
   <button id="btnCine">🎬 Černý strop</button>
+  <button id="btnOkruhyMode">💡 Okruhy</button>
   <button id="btnEditor">🛠 Editor</button>
 </div>
 <div id="tip"></div>
@@ -141,6 +142,7 @@
     <button data-tab="obj" class="act">Objekty</button>
     <button data-tab="pod">Podlaha</button>
     <button data-tab="sve">Světla</button>
+    <button data-tab="okr">Okruhy</button>
     <button data-tab="ste">Stěny</button>
     <button data-tab="sou">Soubor</button>
   </div>
@@ -216,6 +218,32 @@
     <button class="btn full" id="svAuto">✨ Rozmístit bodovky automaticky</button>
     <button class="btn full red" id="svClear">🗑 Smazat všechna svítidla</button>
     <div class="note">Dle katalogu SG20 E: DC 48 V, CCT 3000/4000/6000 K, stmívatelné. Tracky: libovolná délka (profily se řežou a spojují) a orientace ⬍ podélně / ⬌ příčně. Bodovku po výběru natočíš tlačítkem 🎯 a kliknutím na cíl.</div>
+  </div>
+
+  <div class="tabc" id="tab-okr">
+    <div class="sec">Osvětlovací okruhy (jističe)</div>
+    <div id="okrlist"></div>
+    <button class="btn full" id="okrOn">Rozsvítit vše</button>
+    <button class="btn full" id="okrOff">Zhasnout vše</button>
+    <button class="btn full" id="okrAuto">⚡ Rozdělit svítidla podle polohy</button>
+    <div class="note">Hrubý návrh, ať nemusíš klikat 77× ručně: předek → SV3-4, pruh u předstěny
+      s nikami → SV1, střed → Ambient, zadní část → SV5. Doladíš pak po jednom.</div>
+
+    <div class="sec" style="margin-top:14px">Předstěna s nikami</div>
+    <button class="btn full" id="okrNiky">Zobrazit pevnou stěnu (6 nik)</button>
+    <div class="note">6 nik ve třech dvojicích, líc 3,58 m od pravé zdi (= tvoje naměřené 3,5766),
+      každá dvojice vystupuje 14 cm do obchodu. Vypnuté od 8.&nbsp;7.&nbsp;2026 — niky se od té doby
+      řeší objekty v editoru, tak to nechávám na tobě.</div>
+    <div class="sec" style="margin-top:14px">Přiřazení svítidla</div>
+    <div class="note" id="okrSel">Vyber svítidlo v záložce Světla — pak mu tady nastavíš okruh.</div>
+    <div id="okrPrirad"></div>
+    <div class="note" style="margin-top:12px">
+      Podle videa z 13.&nbsp;9.&nbsp;2026: <b>SV1</b> = nika 1 a 2 · <b>SV3-4</b> = styling + předek
+      prodejny · <b>SV5</b> = zázemí, chodba s botami, kuchyňka, WC · <b>Ambient</b> = prostřední
+      světla (taky na SV1) · osvětlení <b>uvnitř nik</b> jde ze zásuvek, mimo hlavní okruhy ·
+      <b>kabinky</b> jsou řízené (Sonoff už zaregistrovaný).<br><br>
+      <b>? Neurčeno</b> = světlo nad pokladnou a nad nikou 3 — u nich jsi jistič neřekl.
+    </div>
   </div>
 
   <div class="tabc" id="tab-ste">
@@ -558,37 +586,56 @@ function volnyNaStene(w,pos,len,ignore){
    =================================================================== */
 const nikaStenaRoot = new THREE.Group(); scene.add(nikaStenaRoot);
 const nikaSvetla = [];
+/* LED lemy uvnitř nik (okruh NIKY — ze zásuvek) a podsvícený sokl / horní omývání
+   stěny (okruh AMBIENT). Držíme si je zvlášť, ať jdou zhasnout po jističích. */
+const nikaEmis = [], soklEmis = [];
+const nikyGeo = [];   // {pole, sirka, od, do} — pro kontrolu proti výkresu
+function nastavEmis(pole, zap, plna){
+  pole.forEach(m=>{ m.emissiveIntensity = zap ? plna : 0.02; });
+}
+function aplikujOkruhyNik(){
+  const n=okruhZap('NIKY'), a=okruhZap('AMBIENT');
+  nastavEmis(nikaEmis, n, 2.2);
+  nastavEmis(soklEmis, a, 1.4);
+  nikaSvetla.forEach(sv=>{ sv.intensity = n ? (sv.userData.zaklad ?? 0) : 0; });
+}
 function postavNikaStenu(){
   while(nikaStenaRoot.children.length) nikaStenaRoot.remove(nikaStenaRoot.children[0]);
-  nikaSvetla.length=0;
+  nikaSvetla.length=0; nikaEmis.length=0; soklEmis.length=0;
   const cols=[3.5,7.1,10.7];   // sloupy 13×13 cm, x=3,1 (osa)
-  const xFace=3.58;            // líc stěny (do interiéru)
+  const xFace0=3.58;           // líc stěny (do interiéru) = Frederikovo naměřené 3,5766
   const dRecess=0.40;          // hloubka niky (40 cm — na ramínka)
-  const xNal=xFace-dRecess;    // zadní stěna niky = 3,18 (těsně před sloupem 3,165)
+  const xNal0=xFace0-dRecess;  // zadní stěna niky = 3,18 (těsně před sloupem 3,165)
   const dWall=0.58;            // celková hloubka konstrukce (schová sloup 13 cm za nikou)
-  const xBack=xFace-dWall;     // 3,00 (za sloupem)
-  const xMid=(xFace+xBack)/2, depthFull=dWall;
+  const xBack=xFace0-dWall;    // 3,00 (za sloupem)
+  const xMid0=(xFace0+xBack)/2, depthFull0=dWall;
+  // aliasy pro části mimo dvojice nik (pilíře, sokl, zadní tyče)
+  const xFace=xFace0, xNal=xNal0, xMid=xMid0, depthFull=depthFull0;
   const wallTop=H-0.08;        // stěna končí 8 cm pod stropem → nahoře STÍNOVÁ SPÁRA
   const zStart=1.9, zEnd=ROOM.hloubka;
   const parapet=0.30, nadpr=2.45;          // otvor niky 0,30–2,45 m
   const pierHalf=0.16;                       // pilíř 32 cm (sloup 13 + rám + OSB + panel)
   const lic=M.travertin, vnitr=M.travertin;
 
+  /* Frederik (13. 9.): „oni jsou vždy dvě spojené, ty co couhají směrem do obchodu“
+     → dvojice nik tvoří blok předsazený o VYSTUP před líc pilířů:  _l_l_   */
+  const VYSTUP=0.14;
   // box líce (plné pole) v rozsahu z0..z1, do výšky wallTop
-  function plnePole(z0,z1){
+  function plnePole(z0,z1,dx=0){
     if(z1-z0<0.005) return;
-    const b=new THREE.Mesh(new THREE.BoxGeometry(depthFull,wallTop,z1-z0),lic);
-    b.position.set(xMid,wallTop/2,(z0+z1)/2); b.castShadow=true; b.receiveShadow=true; nikaStenaRoot.add(b);
+    const b=new THREE.Mesh(new THREE.BoxGeometry(depthFull+dx,wallTop,z1-z0),lic);
+    b.position.set(xMid+dx/2,wallTop/2,(z0+z1)/2); b.castShadow=true; b.receiveShadow=true; nikaStenaRoot.add(b);
   }
-  // nika v rozsahu z0..z1
-  function nika(z0,z1){
+  // nika v rozsahu z0..z1; dx = o kolik dvojice vystupuje do obchodu
+  function nika(z0,z1,dx=0){
     const w=z1-z0, zc=(z0+z1)/2;
+    const xFace=xFace0+dx, xNal=xNal0+dx, xMid=xMid0+dx/2, depthFull=depthFull0+dx;
     // parapet (pod otvorem) a nadpraží (nad otvorem) — plná hloubka
     const par=new THREE.Mesh(new THREE.BoxGeometry(depthFull,parapet,w),lic); par.position.set(xMid,parapet/2,zc); nikaStenaRoot.add(par);
     const nad=new THREE.Mesh(new THREE.BoxGeometry(depthFull,wallTop-nadpr,w),lic); nad.position.set(xMid,(wallTop+nadpr)/2,zc); nikaStenaRoot.add(nad);
     // záda niky
     const zad=new THREE.Mesh(new THREE.BoxGeometry(xNal-xBack,nadpr-parapet,w),vnitr); zad.position.set((xNal+xBack)/2,(parapet+nadpr)/2,zc); nikaStenaRoot.add(zad);
-    nikaStenaRoot.traverse(o=>{ if(o.isMesh){o.castShadow=true;o.receiveShadow=true;} });
+    // (stíny se nastaví hromadně na konci — uvnitř smyčky to bylo O(n²))
     // police z masivního ořechu (horní třetina otvoru), přes celou šířku
     const yShelf=parapet+(nadpr-parapet)*0.66;
     const pol=new THREE.Mesh(new THREE.BoxGeometry(dRecess-0.02,0.04,w-0.04),M.orech);
@@ -606,24 +653,34 @@ function postavNikaStenu(){
       o.position.set(xNal+dRecess*0.55,yRod-0.32,z0+0.12+i*(w-0.24)/Math.max(1,n-1)); o.castShadow=true; nikaStenaRoot.add(o); }
     // skrytý LED v horním lemu niky (svítí dolů) + pásek pod policí
     const ledMat=new THREE.MeshStandardMaterial({color:0xffe8c6,emissive:0xffd9a8,emissiveIntensity:2.2});
+    nikaEmis.push(ledMat);
     const lemTop=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.02,w-0.06),ledMat); lemTop.position.set(xFace-0.04,nadpr-0.04,zc); nikaStenaRoot.add(lemTop);
     const lemPol=new THREE.Mesh(new THREE.BoxGeometry(0.02,0.012,w-0.08),ledMat); lemPol.position.set(xNal+dRecess*0.8,yShelf-0.03,zc); nikaStenaRoot.add(lemPol);
     // měkké teplé světlo dovnitř niky
     const sv=new THREE.PointLight(0xffd9a8,0,3.0,1.8); sv.position.set(xNal+0.2,nadpr-0.2,zc);
+    sv.userData.zaklad=0;
     nikaStenaRoot.add(sv); nikaSvetla.push(sv);
   }
 
-  // pilíře jen u sloupů; PRŮCHOD před 1. sloupem (1. nika zrušena) a STĚNA KONČÍ U POSLEDNÍHO SLOUPU
-  const solids=[];
-  cols.forEach(c=>solids.push([c-pierHalf,c+pierHalf]));
-  const wallStart = cols[0]-pierHalf, wallEnd = cols[2]+pierHalf;
-  // vykresli pevné zóny (pilíře u sloupů)
+  /* 6 NIK VE TŘECH DVOJICÍCH (Frederik 13. 9. 2026).
+     Pilíře stojí u sloupů; čtvrtý (koncový) dopočítán ve stejné rozteči,
+     aby vznikla tři stejná pole. V každém poli jsou DVĚ niky oddělené
+     příčkou 120 mm (tloušťka dle výkresu VYKRES-MINSKA ze 6. 9. 2026).  */
+  const PRICKA=0.12;
+  const rozt=cols[2]-cols[1];
+  const pilire=[...cols, cols[2]+rozt];       // 4 pilíře → 3 pole
+  const solids=pilire.map(c=>[c-pierHalf,c+pierHalf]);
+  const wallStart=pilire[0]-pierHalf, wallEnd=pilire[pilire.length-1]+pierHalf;
   solids.forEach(s=>plnePole(s[0],s[1]));
-  // mezi pevnými zónami = JEDNA nika na pole (předěl jen tam, kde reálně stojí sloup) → 3 niky
+  nikyGeo.length=0;
   for(let i=0;i<solids.length-1;i++){
-    const a=solids[i][1], b=solids[i+1][0]; const span=b-a;
+    const a=solids[i][1], b=solids[i+1][0], span=b-a;
     if(span<0.4){ if(span>0.01) plnePole(a,b); continue; }
-    nika(a,b);
+    const w=(span-PRICKA)/2;                  // dvě stejné niky v poli
+    nika(a, a+w, VYSTUP);                     // levá nika dvojice
+    plnePole(a+w, a+w+PRICKA, VYSTUP);        // příčka mezi nimi
+    nika(a+w+PRICKA, b, VYSTUP);              // pravá nika dvojice
+    nikyGeo.push({pole:i+1, sirka:w, od:a, do:b});
   }
   // ZADNÍ STRANA STĚNY: mosazné tyče na věšení (po celé délce, mezi pilíři)
   const yRod2=1.75, xRod=xBack-0.16, barvy2=[0x2a2a30,0x8c7a5b,0xb8b3a8,0x6e4a3a,0x55585f,0x7c2730];
@@ -642,8 +699,16 @@ function postavNikaStenu(){
   }
   // podsvícený sokl u podlahy + horní omývání stěny (ambient) — po délce stěny
   const soklMat=new THREE.MeshStandardMaterial({color:0xffe8c6,emissive:0xffd9a8,emissiveIntensity:1.4});
+  soklEmis.push(soklMat);
   const sokl=new THREE.Mesh(new THREE.BoxGeometry(0.015,0.05,wallEnd-wallStart),soklMat); sokl.position.set(xFace-0.02,0.06,(wallStart+wallEnd)/2); nikaStenaRoot.add(sokl);
   const lemHorni=new THREE.Mesh(new THREE.BoxGeometry(0.015,0.04,wallEnd-wallStart),soklMat); lemHorni.position.set(xFace-0.02,wallTop-0.04,(wallStart+wallEnd)/2); nikaStenaRoot.add(lemHorni);
+  // stíny hromadně, jednou — a jen na konstrukci, ne na drobnostech (LED, oblečení, tyče)
+  nikaStenaRoot.traverse(o=>{
+    if(!o.isMesh) return;
+    const g=o.geometry?.parameters;
+    const velky = g && (g.height>0.3 || g.depth>0.6);
+    o.castShadow=!!velky; o.receiveShadow=true;
+  });
 }
 
 /* ---------- ALT: HŘEBEN — 3 kolmé stěny od levé zdi ke sloupům, mezi nimi 2 boxy (dle náčrtku) ---------- */
@@ -989,16 +1054,34 @@ function kelvinRGB(k){
 /* ===================================================================
    STAV + scéna editoru
    =================================================================== */
-const KLIC='amande3d_v18';  // v18 = nika-ostrovy (oboustranné souvislé bloky) místo pevných nik; 2 ostrovy ve středu, vlevo+vpředu volno
+const KLIC='amande3d_v19';  // v19 = osvětlovací okruhy (jističe) + 6 nik po dvojicích
+
+/* ===================================================================
+   OSVĚTLOVACÍ OKRUHY (jističe) — dle Frederikova videa 13. 9. 2026
+   „můžu kliknout a rozsvicovat si ty jednotlivý sekce, jak jsem nadiktoval“
+   =================================================================== */
+const OKRUHY = {
+  SV1:      {nm:'SV1',        ds:'Nika 1 · nika 2',                  on:true},
+  AMBIENT:  {nm:'Ambient',    ds:'Prostřední světla · na SV1',       on:true},
+  SV34:     {nm:'SV3-4',      ds:'Styling · předek prodejny',        on:true},
+  SV5:      {nm:'SV5',        ds:'Zázemí · chodba s botami · kuchyňka · WC', on:true},
+  NIKY:     {nm:'Niky (zás.)',ds:'Osvětlení uvnitř nik — ze zásuvek',on:true},
+  KABINKY:  {nm:'Kabinky',    ds:'Řízené · Sonoff zaregistrovaný',   on:true},
+  NEURCENO: {nm:'? Neurčeno', ds:'Pokladna · nika 3 — okruh nebyl řečen', on:true, nejisty:true},
+};
+const OKRUH_DEF='NEURCENO';          // svítidlo bez přiřazení
+function okruhZap(k){ return stav.okruhy?.[k] !== false; }
+
 const stav = {
   cine:true,
   /* track: ori 'Z'=podélně (po hloubce) | 'X'=příčně (po šířce); a = kolmá souřadnice; od/do = rozsah podél */
   tracks:[{ori:'Z',a:2.5,od:1.2,do:17.3},{ori:'Z',a:6.0,od:1.2,do:17.3}],
   objekty:[],          // {t,x,z,r,c?}
-  svetla:[],           // {t,tr,s,tx,tz,k,dim,ang,drop} — s = pozice podél tracku (m, absolutně v ose)
+  svetla:[],           // {t,tr,s,tx,tz,k,dim,ang,drop,o} — s = pozice podél tracku, o = kód okruhu
   steny:[],            // {t,w,pos,len} — výlohy a dveře na stěnách
   podlaha:new Uint8Array(FC*FR),
   denni:1.0, gmult:1.0,
+  okruhy:Object.fromEntries(Object.keys(OKRUHY).map(k=>[k,true])),
 };
 function defaultSteny(){ return [   // dle naměřeného půdorysu
   {t:'vyloha', w:'C',  pos:1.8,   len:3.4},   // horní výloha 3,4 m
@@ -1115,9 +1198,11 @@ function aktualizujSvitidlo(rec){
   const [wx,wz]=svWorld(f);
   rec.grp.position.set(wx,H-0.028,wz);
   const barva=kelvinRGB(f.k);
-  rec.emis.forEach(m=>{ m.emissive.copy(barva); m.color.copy(barva); m.emissiveIntensity=0.4+1.6*f.dim; });
+  const oOn=okruhZap(f.o||OKRUH_DEF);          // vypnutý jistič = svítidlo nesvítí
+  rec.emis.forEach(m=>{ m.emissive.copy(barva); m.color.copy(barva);
+    m.emissiveIntensity=oOn?(0.4+1.6*f.dim):0.03; });
   if(!rec.light) return;
-  const I=def.base*f.dim*stav.gmult;
+  const I=oOn ? def.base*f.dim*stav.gmult : 0;
   rec.light.color.copy(barva);
   if(rec.light.isSpotLight){
     const beam=f.t==='zoom'?(f.ang??36):def.beam;
@@ -1189,8 +1274,9 @@ function vychoziStav(){
   PRESETY.vinyl();
 }
 function serializuj(){
-  return JSON.stringify({ v:5, cine:stav.cine, tracks:stav.tracks, objekty:stav.objekty,
-    svetla:stav.svetla, steny:stav.steny, podlaha:Array.from(stav.podlaha), denni:stav.denni, gmult:stav.gmult });
+  return JSON.stringify({ v:6, cine:stav.cine, tracks:stav.tracks, objekty:stav.objekty,
+    svetla:stav.svetla, steny:stav.steny, podlaha:Array.from(stav.podlaha), denni:stav.denni, gmult:stav.gmult,
+    okruhy:stav.okruhy });
 }
 function aplikuj(json){
   try{
@@ -1214,6 +1300,9 @@ function aplikuj(json){
       : defaultSteny(); // migrace v<4 (a smazání starých bočních dveří — nebyly v datech, byly natvrdo)
     if(d.podlaha&&d.podlaha.length===FC*FR) stav.podlaha.set(d.podlaha);
     stav.denni=d.denni??1; stav.gmult=d.gmult??1;
+    // v6: okruhy. Starší návrhy je nemají → všechno svítí a svítidla spadnou do „Neurčeno“.
+    Object.keys(OKRUHY).forEach(k=>{ stav.okruhy[k] = d.okruhy ? d.okruhy[k]!==false : true; });
+    stav.svetla.forEach(f=>{ if(!OKRUHY[f.o]) f.o=OKRUH_DEF; });
     return true;
   }catch(e){ console.warn('Import selhal',e); return false; }
 }
@@ -1346,6 +1435,111 @@ function aplikujDenni(){
   sun.intensity=1.45*stav.denni*(c?0.35:1);   // černý strop pohltí část světla, ale není noc
   hemi.intensity=0.5*stav.denni*(c?0.45:1);
 }
+
+/* ===================================================================
+   OKRUHY — přepínání, panel, spínání přes Sonoff
+   =================================================================== */
+function aplikujOkruhy(){
+  liveSv.forEach(aktualizujSvitidlo);
+  aplikujOkruhyNik();
+}
+function prepniOkruh(k, hodnota){
+  if(!OKRUHY[k]) return;
+  stav.okruhy[k] = (hodnota===undefined) ? !stav.okruhy[k] : !!hodnota;
+  aplikujOkruhy(); vykresliOkruhy(); uloz();
+  sonoff(k, stav.okruhy[k]);
+}
+function pocetVOkruhu(k){ return stav.svetla.filter(f=>(f.o||OKRUH_DEF)===k).length; }
+
+function vykresliOkruhy(){
+  const box=$('okrlist'); if(!box) return;
+  box.innerHTML='';
+  Object.entries(OKRUHY).forEach(([k,o])=>{
+    const zap=okruhZap(k), n=pocetVOkruhu(k);
+    const d=document.createElement('button');
+    d.className='btn full'+(zap?' act':'');
+    d.style.textAlign='left';
+    d.innerHTML=`${o.nejisty?'⚠ ':''}${o.nm} <span style="opacity:.65;font-weight:400">· ${o.ds}</span>`
+      +`<span style="float:right;opacity:.7">${n}×</span>`;
+    d.onclick=()=>prepniOkruh(k);
+    box.appendChild(d);
+  });
+  // přiřazení okruhu vybranému svítidlu
+  const pr=$('okrPrirad'), sel=$('okrSel');
+  if(!pr) return;
+  pr.innerHTML='';
+  const f = (fsel && fsel.data) ? fsel.data : null;   // fsel = vybrané svítidlo (rec)
+  if(!f){ if(sel) sel.style.display=''; return; }
+  if(sel) sel.style.display='none';
+  Object.entries(OKRUHY).forEach(([k,o])=>{
+    const b=document.createElement('button');
+    b.className='btn'+((f.o||OKRUH_DEF)===k?' act':'');
+    b.style.cssText='margin:2px 3px 2px 0';
+    b.textContent=o.nm;
+    b.onclick=()=>{ f.o=k; aplikujOkruhy(); vykresliOkruhy(); uloz(); };
+    pr.appendChild(b);
+  });
+}
+$('okrOn').onclick =()=>Object.keys(OKRUHY).forEach(k=>prepniOkruh(k,true));
+$('okrOff').onclick=()=>Object.keys(OKRUHY).forEach(k=>prepniOkruh(k,false));
+
+/* Hrubý první nástřel přiřazení okruhů podle polohy svítidla.
+   Frederik pak doladí po jednom — proto je to NÁVRH, ne pravda. */
+$('okrAuto').onclick=()=>{
+  if(!confirm('Přepíše okruh u všech '+stav.svetla.length+' svítidel. Pokračovat?')) return;
+  const D=ROOM.hloubka, xNik=3.58;
+  stav.svetla.forEach(f=>{
+    const [wx,wz]=svWorld(f);
+    if(wz > D-4.2)            f.o='SV5';        // zadní část = zázemí, chodba, kuchyňka, WC
+    else if(wz < 4.5)         f.o='SV34';       // předek prodejny + styling
+    else if(wx > xNik-0.9)    f.o='SV1';        // pruh u předstěny s nikami
+    else                      f.o='AMBIENT';    // prostřední světla
+  });
+  aplikujOkruhy(); vykresliOkruhy(); uloz();
+};
+
+/* Režim okruhů: klikáním do scény se rozsvěcí/zhasínají celé jističe. */
+let okruhMode=false;
+$('btnOkruhyMode').onclick=()=>{
+  okruhMode=!okruhMode;
+  $('btnOkruhyMode').classList.toggle('active',okruhMode);
+  document.body.style.cursor=okruhMode?'pointer':'';
+  if(okruhMode){ vyberObjekt(null); vyberSvitidlo(null); vyberWallEl(null); }
+};
+
+let nikyVidet=false;
+$('okrNiky').onclick=()=>{
+  nikyVidet=!nikyVidet;
+  if(nikyVidet){ postavNikaStenu(); aplikujOkruhyNik(); }
+  else { while(nikaStenaRoot.children.length) nikaStenaRoot.remove(nikaStenaRoot.children[0]);
+         nikaSvetla.length=0; nikaEmis.length=0; soklEmis.length=0; }
+  $('okrNiky').classList.toggle('act',nikyVidet);
+  $('okrNiky').textContent=(nikyVidet?'Skrýt':'Zobrazit')+' pevnou stěnu (6 nik)';
+  vykresliOkruhy();
+};
+
+/* --------------------------------------------------------------------
+   SONOFF — nachystáno, zatím jen loguje do konzole.
+   Frederik (13. 9., 06:25): „Zatím máme Sonoff 2 připojený. Ale ať je
+   to tam nachystaný.“  Dokud SONOFF.aktivni=false, NIC se neodešle.
+   -------------------------------------------------------------------- */
+const SONOFF = {
+  aktivni:false,          // ← na true až bude endpoint a ID zařízení
+  endpoint:'',            // např. https://eu-apia.coolkit.cc/... nebo vlastní relay
+  token:'',
+  mapovani:{ SV1:'', AMBIENT:'', SV34:'', SV5:'', NIKY:'', KABINKY:'', NEURCENO:'' },
+};
+async function sonoff(okruh, zap){
+  const id=SONOFF.mapovani[okruh];
+  console.log(`[okruh] ${okruh} → ${zap?'ZAP':'VYP'}${id?' (dev '+id+')':''}`);
+  if(!SONOFF.aktivni||!id||!SONOFF.endpoint) return;
+  try{
+    await fetch(SONOFF.endpoint,{method:'POST',
+      headers:{'Content-Type':'application/json',...(SONOFF.token?{Authorization:'Bearer '+SONOFF.token}:{})},
+      body:JSON.stringify({deviceid:id,params:{switch:zap?'on':'off'}})});
+  }catch(e){ console.warn('Sonoff nedostupný:',e.message); }
+}
+window.prepniOkruh=prepniOkruh; window.OKRUHY=OKRUHY; window.SONOFF=SONOFF; window.nikyGeo=nikyGeo;
 $('svAuto').onclick=()=>{
   stav.svetla=[];
   stav.tracks.forEach((t,tr)=>{ const oriX=t.ori==='X';
@@ -1554,6 +1748,7 @@ function vyberSvitidlo(rec){
   fsel=rec; aiming=false; $('fAim').classList.remove('act');
   $('fselbox').style.display=rec?'block':'none';
   aimMarker.visible=false;
+  vykresliOkruhy();                 // ať jde vybranému svítidlu hned přiřadit okruh
   if(!rec) return;
   const f=rec.data, def=SVITIDLA[f.t];
   $('fselnm').textContent=`${def.nazev} · ${def.kod}`;
@@ -1643,6 +1838,9 @@ renderer.domElement.addEventListener('pointerdown',e=>{
   const hitS=ray.intersectObjects(svRoot.children,true)[0];
   if(hitS){ const root=najdiKoren(hitS.object,svRoot);
     const rec=liveSv.find(r=>r.grp===root);
+    // REŽIM OKRUHŮ: klik na svítidlo přepne celý jeho jistič (Frederik 13. 9.:
+    // „můžu tam kliknout a rozsvicovat si ty jednotlivý sekce“)
+    if(rec && okruhMode){ prepniOkruh(rec.data.o||OKRUH_DEF); return; }
     if(rec){ vyberObjekt(null); vyberWallEl(null); vyberSvitidlo(rec); drag={kind:'fix'}; orbit.enabled=false; return; } }
   // výběr/drag objektu
   const hitO=ray.intersectObjects(objRoot.children,true)[0];
@@ -1815,6 +2013,7 @@ addEventListener('keyup',e=>{ if(e.code==='KeyW'||e.code==='ArrowUp')keys.f=0; i
 function obnovVse(){
   rebuildObjekty(); rebuildTracks(); rebuildSvetla(); rebuildSteny(); redrawFloor();
   aplikujCine(); syncGlob(); aktualizujStats(); renderNavrhy();
+  aplikujOkruhyNik(); vykresliOkruhy();
   vyberObjekt(null); vyberSvitidlo(null); vyberWallEl(null);
 }
 const ulozeno = localStorage.getItem(KLIC);

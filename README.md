@@ -17,8 +17,34 @@ Prostor po KB bance (~129 m², 8,9 × 15,6 m + výklenek), editor vybavení, sv�
 
 Vše se průběžně ukládá do prohlížeče (localStorage, klíč `amande3d_v17`).
 
+## Osvětlovací okruhy (jističe)
+Záložka **Okruhy** v editoru + tlačítko **💡 Okruhy** ve spodní liště (v tom režimu klik na svítidlo
+ve scéně přepne celý jeho jistič). Okruhy dle Frederikova videa z 13. 9. 2026:
+
+| Okruh | Co napájí |
+|---|---|
+| `SV1` | nika 1 · nika 2 |
+| `AMBIENT` | prostřední světla (taky na SV1) |
+| `SV34` | styling + předek prodejny |
+| `SV5` | zázemí · chodba s botami · kuchyňka · WC |
+| `NIKY` | osvětlení **uvnitř** nik — ze zásuvek, mimo hlavní okruhy |
+| `KABINKY` | řízené, Sonoff už zaregistrovaný |
+| `NEURCENO` | světlo nad pokladnou a nad nikou 3 — jistič nebyl řečen |
+
+Okruh se drží na svítidle v poli `o`. Zhasnutí řeší jediné místo — `aktualizujSvitidlo()`.
+**⚡ Rozdělit svítidla podle polohy** udělá hrubý první nástřel, pak se doladí po jednom.
+`SONOFF` objekt je nachystaný na reálné spínání, ale `aktivni:false` — dokud se nedoplní
+endpoint a ID zařízení, nic se neodesílá, jen se loguje do konzole.
+
 ## Technika — DŮLEŽITÉ pro další AI úpravy
-`index.html` obsahuje HTML + CSS + malý loader. **Celý JS modul je rozdělen do `parts/p1`, `parts/p2`, `parts/p3`** — loader je za běhu složí (fetch → Blob → dynamic import; pořadí závazné). Důvod: limit velikosti při AI deployi přes GitHub API (konektor nemá scope `workflow`, takže nejde složit Actions). Při úpravě JS uprav příslušnou část (p1 = scéna/materiály/podlaha/stěny, p2 = katalog/svítidla/stav/serializace/historie/UI začátek, p3 = track UI/návrhy/interakce/režimy/start) a při změně verze zvyš `VER` v index.html (cache-bust). Kontrola: `cat p1 p2 p3 | node --check` (jako .mjs).
+`index.html` je **jeden samostatný soubor** — HTML + CSS + celý JS inline v `<script type="module">`.
+Loader částí ani `VER` už neexistují: složky `parts/p1..p3` v repu sice zůstaly, ale **nikdo je nenačítá**
+a jejich obsah je zastaralý (loader zmizel commitem `3218da8`). Neupravuj je — edituj `index.html`.
+Kontrola syntaxe: vyříznout obsah `<script type="module">` do `.mjs` a `node --check`.
 
 three.js 0.160 z CDN (importmap), `logo-data.js` = podsvícené logo.
-Stav se serializuje jako JSON v6: `{v, cine, tracks, objekty, svetla, steny, podlaha, denni, gmult, stenaC}`.
+Stav se serializuje jako JSON **v6**: `{v, cine, tracks, objekty, svetla, steny, podlaha, denni, gmult, okruhy}`.
+localStorage klíč **`amande3d_v19`**. Starší uložené návrhy se načtou: chybějící okruhy se doplní
+jako zapnuté a svítidla bez `o` spadnou do `NEURCENO`.
+
+Deploy = commit do větve `main` (GitHub Pages, legacy build z rootu).
