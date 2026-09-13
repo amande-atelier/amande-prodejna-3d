@@ -114,8 +114,8 @@ const M = {
   sirka:        {v: 8.8491, p:'Šířka obchodu'},
   vyska:        {v: 3.10,   p:'Světlá výška', odhad:true},
 
-  nikaOdPrave:  {v: 3.5766, p:'Líc předstěny od pravé zdi'},
-  nikaOdPrave2: {v: 3.6601, p:'Totéž, druhé měření', nejasne:true},
+  nikaOdPrave:  {v: 3.5766, p:'„Niky od pravé strany“', nejasne:true},
+  nikaOdPrave2: {v: 3.6601, p:'„Od pravé strany zdi“', nejasne:true},
   nika1_2:      {v: 3.0087, p:'Mezi nikami (1–2)'},
   nika2_3:      {v: 2.5064, p:'Mezi nikou 2 a 3'},
   nika3_zed:    {v: 3.2591, p:'Nika 3 → zadní stěna'},
@@ -137,14 +137,16 @@ const D = M.delka.v, S = M.sirka.v, V = M.vyska.v
    Pohled „zády ke vstupu“ = díváš se do −Z, pravá ruka = +X.        */
 
 /* ===========================================================================
-   PŘEDSTĚNA S NIKAMI — 6 nik ve TŘECH DVOJICÍCH
-   Frederik (2. video): „oni jsou vždy dvě spojené, ty co couhají směrem
-   do obchodu … takže jich celkem 6 nik.“   Schéma:  _ll_ll_ll_
-   Líc předstěny stojí 3,5766 m od pravé zdi (= tvoje naměřená hodnota,
-   ve starším návrhu vedená jako xFace 3.58).
+   NIKY NA PRAVÉ STĚNĚ — 6 nik ve TŘECH DVOJICÍCH
+   Frederik (2. video): „ta nika je plně na zdi, vidíš to? … tady ty niky jsou
+   taky plně na zdi, tady taky“ a „oni jsou vždy dvě spojené, ty co couhají
+   směrem do obchodu … takže jich celkem 6 nik.“
+   Bloky jsou tedy PŘILEPENÉ K PRAVÉ OBVODOVÉ STĚNĚ a vystupují do obchodu.
+   Naměřené 3,5766 / 3,6601 m („niky od pravé strany“) se do geometrie
+   nepromítají — pořád nevím, od čeho se měřilo.
    =========================================================================== */
-const PRED_LIC = S - M.nikaOdPrave.v   // líc předstěny do interiéru
-const PRED_D   = 0.58                  // hloubka konstrukce (schová sloup za nikou)
+const PRED_D   = 0.58                  // hloubka konstrukce
+const PRED_LIC = S - PRED_D            // niky jsou NALEPENÉ NA PRAVÉ STĚNĚ — rub je u zdi
 const NIKA_PAR = 0.30                  // parapet — dno otvoru
 const NIKA_NAD = 2.45                  // nadpraží — horní hrana otvoru
 const NIKA_D   = 0.40                  // hloubka niky (na ramínka)
