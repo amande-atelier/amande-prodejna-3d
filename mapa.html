@@ -296,16 +296,20 @@ root.add(strop)
 const RAM_A = 2.30, RAM_B = 1.55, PULT_T = 0.60, PULT_H = 0.90
 const pultZ = ZEBRA_Z[2] + 2.60                      // až za posledním žebrem, směrem ke vstupu
 const SLOUP = 0.13                                    // sloup 13×13 cm
-// rameno kolmo od pravé zdi do obchodu (jako žebra)
+/* ROH „L“ SEDÍ NA SLOUPU (Frederik). Delší rameno jde od sloupu k pravé zdi,
+   kratší z téhož sloupu kolmo dozadu — obě se tedy potkávají u sloupu,
+   ne u zdi, jak jsem to měl.                                              */
+const rohX = S - RAM_A + PULT_T/2                     // osa sloupu = roh L
+// delší rameno: od sloupu k pravé zdi
 const pultA = box(RAM_A, PULT_H, PULT_T, mat.travertin, S-RAM_A/2, PULT_H/2, pultZ)
 box(RAM_A+.05, .05, PULT_T+.05, mat.drevo, S-RAM_A/2, PULT_H+.025, pultZ)
-// kratší rameno podél zdi → tvar L
+// kratší rameno: od TÉHOŽ sloupu kolmo, směrem ke vstupu
 const pultB = box(PULT_T, PULT_H, RAM_B, mat.travertin,
-  S-PULT_T/2, PULT_H/2, pultZ + RAM_B/2 + PULT_T/2)
+  rohX, PULT_H/2, pultZ + RAM_B/2 + PULT_T/2)
 box(PULT_T+.05, .05, RAM_B+.05, mat.drevo,
-  S-PULT_T/2, PULT_H+.025, pultZ + RAM_B/2 + PULT_T/2)
-// sloup, se kterým je pokladna spojená — vytažený do stropu
-box(SLOUP+.06, V, SLOUP+.06, mat.travertin, S-RAM_A+SLOUP/2, V/2, pultZ)
+  rohX, PULT_H+.025, pultZ + RAM_B/2 + PULT_T/2)
+// sloup v rohu L — vytažený do stropu
+box(SLOUP+.06, V, SLOUP+.06, mat.travertin, rohX, V/2, pultZ)
 popisek('POKLADNA (L) + sloup', S-RAM_A/2, 1.45, pultZ)
 klikaci.push({mesh:pultA, okruh:'NEURCENO', nm:'Pokladna — okruh NEURČEN'})
 klikaci.push({mesh:pultB, okruh:'NEURCENO', nm:'Pokladna — okruh NEURČEN'})
