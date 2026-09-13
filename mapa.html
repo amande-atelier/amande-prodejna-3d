@@ -369,19 +369,21 @@ ZEBRA.forEach((zb)=>{
 const xLic = S - ZEBRO_L        // volné konce žeber — hranice „uličky“ před nimi
 
 /* ---------- levá strana: styling + zrcadlo ---------- */
-/* STĚNA STYLING ČÁSTI — Frederik (nákres): „stěna u té styling části,
-   kde budou zrcadla“. Není to jen zrcadlo na obvodové zdi, ale samostatná
-   příčka vybíhající od levé stěny do prostoru; zrcadlo je na ní.        */
-const stylZ = M.styling.v
-const stylD = D - 1.4 - stylZ        // „zrcadlo přes celé“ — po celé délce té stěny
-const STYL_T = 0.16                  // tloušťka příčky
-const STYL_VYBEH = 1.25              // jak daleko od levé zdi vybíhá čelo
+/* STĚNA STYLING ČÁSTI — Frederik: „čouhá do prodejny směrem k nikám,
+   je dlouhá 2,5 m a vysoká 2,5 m“. Tedy žebro kolmé na LEVOU zeď,
+   nedosahuje ke stropu. Zrcadla jsou na ní.                            */
+const stylZ  = M.styling.v           // 5,8853 m od zadní stěny
+const STYL_L = 2.50                  // délka — jak daleko čouhá do prodejny
+const STYL_H = 2.50                  // výška — nižší než strop (3,1)
+const STYL_T = 0.16                  // tloušťka
 
-box(STYL_T, V, stylD, mat.stena, STYL_VYBEH, V/2, stylZ + stylD/2)          // příčka
-box(STYL_VYBEH, V, STYL_T, mat.stena, STYL_VYBEH/2, V/2, stylZ)             // návrat k levé zdi
-const zrcadlo = box(.05, 2.15, stylD-.1, mat.zrcadlo,
-  STYL_VYBEH + STYL_T/2 + .03, 1.25, stylZ + stylD/2)                       // zrcadlo na příčce
-popisek('STĚNA STYLINGU — zrcadla', STYL_VYBEH+.5, 2.75, stylZ + stylD - .5)
+const stylStena = box(STYL_L, STYL_H, STYL_T, mat.stena, STYL_L/2, STYL_H/2, stylZ)
+// zrcadla na obou lících stěny
+const zrcadlo  = box(STYL_L-.1, 2.05, .04, mat.zrcadlo, STYL_L/2, 1.15, stylZ + STYL_T/2 + .02)
+box(STYL_L-.1, 2.05, .04, mat.zrcadlo, STYL_L/2, 1.15, stylZ - STYL_T/2 - .02)
+popisek('STĚNA STYLINGU — zrcadla  2,50 × 2,50', STYL_L/2, STYL_H+.25, stylZ)
+klikaci.push({mesh:stylStena, okruh:'SV34', nm:'Styling — SV3-4'})
+const stylD = STYL_L                 // pro rozmístění štendrů níž
 const stylZona = new THREE.Mesh(new THREE.PlaneGeometry(2.6, stylD),
   new THREE.MeshStandardMaterial({color:0x8a7f6d, roughness:.9, transparent:true, opacity:.3}))
 stylZona.rotation.x = -Math.PI/2
