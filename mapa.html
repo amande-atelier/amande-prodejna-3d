@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Amande — 3D mapa prodejny</title>
+<style>
+  :root{
+    --bg:#0f0f11; --panel:#17171b; --line:#2a2a31;
+    --tx:#e8e4dd; --dim:#8b8680; --acc:#c9a227;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;background:var(--bg);color:var(--tx);
+    font:14px/1.45 -apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+  #app{position:fixed;inset:0}
+  canvas{display:block}
+
+  #panel{position:fixed;top:0;left:0;bottom:0;width:290px;background:var(--panel);
+    border-right:1px solid var(--line);padding:16px;overflow-y:auto;z-index:10}
+  #panel h1{font-size:15px;margin:0 0 2px;letter-spacing:.14em;text-transform:uppercase;font-weight:600}
+  #panel .sub{color:var(--dim);font-size:11px;margin-bottom:18px}
+
+  .sec{margin-bottom:20px}
+  .sec>h2{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--dim);
+    margin:0 0 8px;font-weight:600}
+
+  .okruh{display:flex;align-items:center;gap:9px;padding:8px 10px;margin-bottom:5px;
+    background:#1d1d22;border:1px solid var(--line);border-radius:6px;cursor:pointer;
+    user-select:none;transition:border-color .15s,background .15s}
+  .okruh:hover{border-color:#3d3d46;background:#212127}
+  .okruh.on{border-color:var(--acc);background:#251f12}
+  .okruh .dot{width:9px;height:9px;border-radius:50%;background:#3a3a42;flex:none;transition:.15s}
+  .okruh.on .dot{box-shadow:0 0 9px 2px currentColor}
+  .okruh .nm{flex:1;font-weight:600;font-size:12.5px}
+  .okruh .ds{font-size:10.5px;color:var(--dim);font-weight:400;margin-top:1px}
+  .okruh .sw{font-size:9px;letter-spacing:.09em;color:var(--dim);border:1px solid var(--line);
+    border-radius:3px;padding:2px 5px}
+  .okruh.on .sw{color:var(--acc);border-color:var(--acc)}
+
+  .btn{display:block;width:100%;padding:7px;margin-bottom:5px;background:#1d1d22;
+    border:1px solid var(--line);border-radius:6px;color:var(--tx);cursor:pointer;font-size:12px}
+  .btn:hover{border-color:#3d3d46}
+
+  .mr{display:flex;justify-content:space-between;padding:3.5px 0;font-size:11.5px;
+    border-bottom:1px solid #202026}
+  .mr span:first-child{color:var(--dim)}
+  .mr b{font-weight:600;font-variant-numeric:tabular-nums}
+  .mr.odhad b{color:#b8860b}
+
+  #hint{position:fixed;bottom:14px;left:306px;color:var(--dim);font-size:11px;z-index:10;
+    background:rgba(15,15,17,.82);padding:5px 10px;border-radius:5px}
+  #tip{position:fixed;background:#1d1d22;border:1px solid var(--acc);border-radius:5px;
+    padding:6px 10px;font-size:12px;pointer-events:none;opacity:0;transition:opacity .12s;z-index:20}
+  .warn{font-size:10.5px;color:#b8860b;line-height:1.4;margin-top:8px;
+    border-left:2px solid #b8860b;padding-left:8px}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="tip"></div>
+<div id="hint">táhni = otáčení · kolečko = zoom · pravé tlačítko = posun · klikni na svítidlo = přepni okruh</div>
+
+<div id="panel">
+  <h1>Amande</h1>
+  <div class="sub">3D mapa prodejny · podklad z videa 13.&nbsp;9.&nbsp;2026</div>
+
+  <div class="sec">
+    <h2>Osvětlovací okruhy</h2>
+    <div id="okruhy"></div>
+    <button class="btn" id="vse-on">Rozsvítit vše</button>
+    <button class="btn" id="vse-off">Zhasnout vše</button>
+  </div>
+
+  <div class="sec">
+    <h2>Pohled</h2>
+    <button class="btn" data-view="perspektiva">Perspektiva</button>
+    <button class="btn" data-view="pudorys">Půdorys</button>
+    <button class="btn" data-view="vstup">Od vstupu</button>
+  </div>
+
+  <div class="sec">
+    <h2>Zobrazit</h2>
+    <button class="btn" id="t-strop">Strop: skrytý</button>
+    <button class="btn" id="t-popisky">Popisky: zapnuté</button>
+  </div>
+
+  <div class="sec">
+    <h2>Rozměry (m)</h2>
+    <div id="miry"></div>
+    <div class="warn" id="warn"></div>
+  </div>
+</div>
+
+<script type="importmap">
+{"imports":{
+  "three":"https://unpkg.com/three@0.160.0/build/three.module.js",
+  "three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"
+}}
+</script>
+
+<script type="module">
+import * as THREE from 'three'
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js'
+import {CSS2DRenderer,CSS2DObject} from 'three/addons/renderers/CSS2DRenderer.js'
+
+/* ==========================================================================
+   ROZMĚRY
+   Zdroj: VID_20260913_164122.mp4, laserový dálkoměr DeWalt DW03101.
+   Hodnoty odečtené z displeje a nezávisle ověřené; 5.8853 a 3.4815 navíc
+   potvrzuje Frederikův hlas v komentáři.  odhad:true = NENÍ změřeno.
+   ========================================================================== */
+const M = {
+  delka:        {v:13.7117, p:'Délka obchodu'},
+  sirka:        {v: 8.8491, p:'Šířka obchodu'},
+  vyska:        {v: 3.10,   p:'Světlá výška', odhad:true},
+
+  nikaOdPrave:  {v: 3.5766, p:'Líc předstěny od pravé zdi'},
+  nikaOdPrave2: {v: 3.6601, p:'Totéž, druhé měření', nejasne:true},
+  nika1_2:      {v: 3.0087, p:'Mezi nikami (1–2)'},
+  nika2_3:      {v: 2.5064, p:'Mezi nikou 2 a 3'},
+  nika3_zed:    {v: 3.2591, p:'Nika 3 → zadní stěna'},
+
+  styling:      {v: 5.8853, p:'Styling od zadní stěny'},
+  vyklenekA:    {v: 2.6179, p:'Výklenek — hloubka'},
+  vyklenekB:    {v: 3.4815, p:'Výklenek — šířka'},
+
+  chodbaD:      {v: 5.50,   p:'Chodba (boty) délka', receno:true},
+  chodbaS:      {v: 2.30,   p:'Chodba (boty) šířka', receno:true},
+}
+/* receno:true = Frederik to řekl nahlas (05:20, 05:29), laser to neměřil —
+   je to zaokrouhlené, ne odečet. */
+const D = M.delka.v, S = M.sirka.v, V = M.vyska.v
+
+/* Soustava:  X 0=levá stěna → S=pravá stěna
+              Z 0=zadní stěna → D=vstup/výlohy
+              Y 0=podlaha → V=strop
+   Pohled „zády ke vstupu“ = díváš se do −Z, pravá ruka = +X.        */
+
+/* ===========================================================================
+   PŘEDSTĚNA S NIKAMI — 6 nik ve TŘECH DVOJICÍCH
+   Frederik (2. video): „oni jsou vždy dvě spojené, ty co couhají směrem
+   do obchodu … takže jich celkem 6 nik.“   Schéma:  _ll_ll_ll_
+   Líc předstěny stojí 3,5766 m od pravé zdi (= tvoje naměřená hodnota,
+   ve starším návrhu vedená jako xFace 3.58).
+   =========================================================================== */
+const PRED_LIC = S - M.nikaOdPrave.v   // líc předstěny do interiéru
+const PRED_D   = 0.58                  // hloubka konstrukce (schová sloup za nikou)
+const NIKA_PAR = 0.30                  // parapet — dno otvoru
+const NIKA_NAD = 2.45                  // nadpraží — horní hrana otvoru
+const NIKA_D   = 0.40                  // hloubka niky (na ramínka)
+const PRICKA   = 0.12                  // tenká příčka UVNITŘ dvojice (dle výkresu)
+const PILIR    = 0.32                  // silnější pilíř MEZI dvojicemi
+const VYSTUP   = 0.14                  // o kolik dvojice couhá do obchodu
+
+/* Řada nik běží podél pravé strany; před ní zbyde místo na pokladnu u vstupu. */
+const RADA_OD = 1.35, RADA_DO = D - 2.55
+const NIKA_W  = ((RADA_DO-RADA_OD) - 3*PRICKA - 2*PILIR) / 6   // ≈ 1,63 m (výkres 1,69–2,27)
+
+/* Osy dvojic a jednotlivých nik, počítáno od zadní stěny dopředu. */
+const DVOJICE = [], NIKY_OS = []
+;(function rozvrhni(){
+  let z = RADA_OD
+  for(let d=0; d<3; d++){
+    const zac = z
+    NIKY_OS.push(z + NIKA_W/2);  z += NIKA_W + PRICKA
+    NIKY_OS.push(z + NIKA_W/2);  z += NIKA_W
+    DVOJICE.push({od:zac, do:z, stred:(zac+z)/2})
+    z += PILIR
+  }
+})()
+
+/* ==========================================================================
+   OKRUHY — přesně jak je Frederik nadiktoval ve videu (03:20–05:50)
+   ========================================================================== */
+const OKRUHY = {
+  SV1:      {nm:'SV1',       ds:'Nika 1 · nika 2', barva:0xfff0d4, on:true},
+  AMBIENT:  {nm:'Ambient',   ds:'Prostřední světla vzadu · SV1', barva:0xffe0b0, on:true},
+  SV34:     {nm:'SV3-4',     ds:'Styling · předek prodejny', barva:0xfff4e0, on:true},
+  SV5:      {nm:'SV5',       ds:'Chodba · zázemí · kuchyňka · WC', barva:0xffeccc, on:true},
+  NIKY:     {nm:'Niky (zás.)',ds:'Osvětlení uvnitř nik — ze zásuvek', barva:0xffc978, on:true},
+  KABINKY:  {nm:'Kabinky',   ds:'Řízené · Sonoff zaregistrovaný', barva:0xfff0d4, on:true},
+  NEURCENO: {nm:'? Neurčeno', ds:'Světlo nad pokladnou · nika 3 — okruh jsi neřekl',
+             barva:0xff9a5c, on:true, nejisty:true},
+}
+
+/* ========================================================================== */
+const scene = new THREE.Scene()
+scene.background = new THREE.Color(0x0f0f11)
+scene.fog = new THREE.Fog(0x0f0f11, 30, 75)
+
+const camera = new THREE.PerspectiveCamera(52, innerWidth/innerHeight, .1, 300)
+const renderer = new THREE.WebGLRenderer({antialias:true})
+renderer.setSize(innerWidth,innerHeight)
+renderer.setPixelRatio(Math.min(devicePixelRatio,2))
+renderer.shadowMap.enabled = true
+renderer.shadowMap.type = THREE.PCFSoftShadowMap
+document.getElementById('app').appendChild(renderer.domElement)
+
+const labelRenderer = new CSS2DRenderer()
+labelRenderer.setSize(innerWidth,innerHeight)
+labelRenderer.domElement.style.cssText='position:fixed;top:0;left:0;pointer-events:none;z-index:5'
+document.getElementById('app').appendChild(labelRenderer.domElement)
+
+const controls = new OrbitControls(camera, renderer.domElement)
+controls.enableDamping = true
+controls.dampingFactor = .07
+controls.target.set(S/2, 1.2, D/2)
+camera.position.set(S/2 - 9, 11, D + 11)
+
+scene.add(new THREE.AmbientLight(0x404050, 1.1))
+const sun = new THREE.DirectionalLight(0xaab4c8, .45)
+sun.position.set(-12, 22, 26); sun.castShadow = true
+sun.shadow.mapSize.set(2048,2048)
+sun.shadow.camera.left=-22; sun.shadow.camera.right=22
+sun.shadow.camera.top=22; sun.shadow.camera.bottom=-22
+sun.shadow.camera.far = 70
+scene.add(sun)
+
+/* --- materiály --- */
+const mat = {
+  podlaha:  new THREE.MeshStandardMaterial({color:0x9c958a, roughness:.72, metalness:.03}),
+  stena:    new THREE.MeshStandardMaterial({color:0xe6e1d8, roughness:.94, side:THREE.DoubleSide}),
+  strop:    new THREE.MeshStandardMaterial({color:0x1a1a1d, roughness:.96, side:THREE.DoubleSide}),
+  travertin:new THREE.MeshStandardMaterial({color:0xbfae9b, roughness:.62, metalness:.04}),
+  drevo:    new THREE.MeshStandardMaterial({color:0xa8814f, roughness:.66}),
+  sklo:     new THREE.MeshPhysicalMaterial({color:0xbcd4e0, roughness:.06, metalness:0,
+              transmission:.9, thickness:.4, transparent:true, opacity:.3}),
+  zrcadlo:  new THREE.MeshStandardMaterial({color:0xc4ccd2, roughness:.04, metalness:.95}),
+  zona:     new THREE.MeshStandardMaterial({color:0x6b6459, roughness:.85, transparent:true, opacity:.55}),
+}
+
+const root = new THREE.Group(); scene.add(root)
+const svetla = []          // {mesh, light, okruh}
+const popisky = []
+const klikaci = []         // raycast cíle
+
+function box(w,h,d,m,x,y,z,parent){
+  const me = new THREE.Mesh(new THREE.BoxGeometry(w,h,d), m)
+  me.position.set(x,y,z); me.castShadow = true; me.receiveShadow = true
+  ;(parent||root).add(me); return me
+}
+function popisek(txt,x,y,z,cls){
+  const el = document.createElement('div')
+  el.textContent = txt
+  el.style.cssText = 'color:#e8e4dd;font:11px -apple-system,Segoe UI,sans-serif;'+
+    'background:rgba(15,15,17,.8);padding:2px 7px;border-radius:4px;white-space:nowrap;'+
+    'border:1px solid #2a2a31;'+(cls||'')
+  const o = new CSS2DObject(el); o.position.set(x,y,z)
+  root.add(o); popisky.push(o); return o
+}
+
+/* ---------- skořápka ---------- */
+const podlaha = new THREE.Mesh(new THREE.PlaneGeometry(S,D), mat.podlaha)
+podlaha.rotation.x = -Math.PI/2
+podlaha.position.set(S/2, 0, D/2); podlaha.receiveShadow = true
+root.add(podlaha)
+
+// stěny
+box(.12, V, D, mat.stena, 0,   V/2, D/2)      // levá
+/* zadní stěna s otvorem — průchod do zázemí (jinak by byl model neprůchozí) */
+const PRU_X = 3.40, PRU_W = 1.25, PRU_H = 2.10
+box(PRU_X-PRU_W/2,       V, .12, mat.stena, (PRU_X-PRU_W/2)/2, V/2, 0)
+box(S-(PRU_X+PRU_W/2),   V, .12, mat.stena, (PRU_X+PRU_W/2+S)/2, V/2, 0)
+box(PRU_W, V-PRU_H, .12, mat.stena, PRU_X, PRU_H+(V-PRU_H)/2, 0)   // nadpraží
+
+box(.12, V, D, mat.stena, S, V/2, D/2)        // pravá obvodová
+
+// přední stěna = výlohy + vstup
+const vyloha = new THREE.Mesh(new THREE.BoxGeometry(S, V-.35, .1), mat.sklo)
+vyloha.position.set(S/2, (V-.35)/2+.15, D); root.add(vyloha)
+box(S, .15, .14, mat.travertin, S/2, .075, D)
+box(.1, V, .14, mat.travertin, S*.34, V/2, D)   // rámy vstupu
+box(.1, V, .14, mat.travertin, S*.56, V/2, D)
+popisek('VSTUP', S*.45, .5, D+.35)
+
+// strop (přepínatelný)
+const strop = new THREE.Mesh(new THREE.PlaneGeometry(S,D), mat.strop)
+strop.rotation.x = Math.PI/2
+strop.position.set(S/2, V, D/2); strop.visible = false
+root.add(strop)
+
+/* ---------- pravá strana: pokladna do „L“ ----------
+   Frederik (2. video, 00:45): „A ta pokladna je takový L.“                */
+/* Pokladna stojí na konci řady nik, v hlavním prostoru — výkres ji značí
+   šipkou „← pokladna“ hned u niky 1. Délky ramen z dřívějšího návrhu:
+   pult dlouhý 2,3 m + pult krátký 1,55 m, hloubka 0,6 m, výška 0,95 m. */
+const pultZ = D - 2.35
+const RAM_A = 2.3, RAM_B = 1.55, PULT_T = 0.60, PULT_H = 0.90
+const pultX = PRED_LIC - VYSTUP - PULT_T/2 - .10      // podél líce nik
+// delší rameno podél řady nik
+const pultA = box(PULT_T, PULT_H, RAM_A, mat.travertin, pultX, PULT_H/2, pultZ)
+box(PULT_T+.05, .05, RAM_A+.05, mat.drevo, pultX, PULT_H+.025, pultZ)
+// kratší rameno kolmo do prostoru → tvar L
+const rohZ = pultZ - RAM_A/2 + PULT_T/2
+const pultB = box(RAM_B, PULT_H, PULT_T, mat.travertin, pultX-RAM_B/2+PULT_T/2, PULT_H/2, rohZ)
+box(RAM_B+.05, .05, PULT_T+.05, mat.drevo, pultX-RAM_B/2+PULT_T/2, PULT_H+.025, rohZ)
+popisek('POKLADNA (L)', pultX-.7, 1.4, pultZ)
+klikaci.push({mesh:pultA, okruh:'NEURCENO', nm:'Pokladna — okruh NEURČEN'})
+klikaci.push({mesh:pultB, okruh:'NEURCENO', nm:'Pokladna — okruh NEURČEN'})
+
+/* ---------- PŘEDSAZENÁ STĚNA S NIKAMI ----------
+   Souvislá travertinová předstěna 3.5766 m od pravé obvodové zdi, s pilíři
+   a prosvětlenými nikami mezi nimi. Frederik (2. video): „ta nika je plně
+   na zdi“ — je zapuštěná v téhle předstěně, nestojí volně.               */
+const ostenim = new THREE.MeshStandardMaterial({color:0xc6b5a1, roughness:.6, metalness:.04})
+const xZadPred = PRED_LIC + PRED_D          // rub konstrukce (u pravé zdi)
+
+/* Konstrukce: pilíře a parapety/nadpraží. Dvojice couhá o VYSTUP do obchodu. */
+;(function predstena(){
+  // rub je u všech stejný, líc se u dvojic předsazuje → blok je o VYSTUP hlubší
+  function pas(z0,z1,y,h,dx){
+    if(z1-z0 < .004) return
+    const hl = PRED_D + dx
+    box(hl, h, z1-z0, mat.travertin, xZadPred - hl/2, y + h/2, (z0+z1)/2)
+  }
+  let z = RADA_OD
+  DVOJICE.forEach((dv,i)=>{
+    if(dv.od > z) pas(z, dv.od, 0, V, 0)                  // pilíř mezi dvojicemi
+    const a = dv.od, b = a + NIKA_W
+    const c = b + PRICKA, e = c + NIKA_W
+    pas(a, b, 0, NIKA_PAR, VYSTUP);  pas(a, b, NIKA_NAD, V-NIKA_NAD, VYSTUP)
+    pas(b, c, 0, V, VYSTUP)                               // příčka uvnitř dvojice
+    pas(c, e, 0, NIKA_PAR, VYSTUP);  pas(c, e, NIKA_NAD, V-NIKA_NAD, VYSTUP)
+    z = dv.do
+  })
+  if(z < RADA_DO) pas(z, RADA_DO, 0, V, 0)                // koncový pilíř
+})()
+
+/* Samotné niky */
+const xLic = PRED_LIC - VYSTUP              // líc předsazené dvojice
+NIKY_OS.forEach((z,i)=>{
+  const g = new THREE.Group(); root.add(g)
+  const hOtv = NIKA_NAD - NIKA_PAR
+  const xZad = xLic + NIKA_D                // zadní plát niky
+
+  // ostění — boky, dno, strop
+  box(NIKA_D, hOtv, .04, ostenim, xLic+NIKA_D/2, (NIKA_PAR+NIKA_NAD)/2, z-NIKA_W/2, g)
+  box(NIKA_D, hOtv, .04, ostenim, xLic+NIKA_D/2, (NIKA_PAR+NIKA_NAD)/2, z+NIKA_W/2, g)
+  box(NIKA_D, .04, NIKA_W, ostenim, xLic+NIKA_D/2, NIKA_PAR, z, g)
+  box(NIKA_D, .04, NIKA_W, ostenim, xLic+NIKA_D/2, NIKA_NAD, z, g)
+
+  // zadní prosvětlený plát (okrový štuk) — tohle svítí
+  const plat = new THREE.Mesh(
+    new THREE.BoxGeometry(.06, hOtv-.06, NIKA_W-.06),
+    new THREE.MeshStandardMaterial({color:0xd9b877,
+      emissive:new THREE.Color(OKRUHY.NIKY.barva), emissiveIntensity:1.1, roughness:.85}))
+  plat.position.set(xZad-.03, (NIKA_PAR+NIKA_NAD)/2, z); g.add(plat)
+
+  // police z ořechu + mosazná tyč na ramínka
+  box(NIKA_D-.03, .04, NIKA_W-.05, mat.drevo, xLic+NIKA_D/2, NIKA_PAR+hOtv*.66, z, g)
+  const tyc = new THREE.Mesh(new THREE.CylinderGeometry(.016,.016,NIKA_W-.05,10),
+    new THREE.MeshStandardMaterial({color:0xb8913f, roughness:.35, metalness:.85}))
+  tyc.rotation.x = Math.PI/2
+  tyc.position.set(xLic+NIKA_D*.55, NIKA_PAR+hOtv*.66-.20, z); g.add(tyc)
+
+  const sv = new THREE.PointLight(OKRUHY.NIKY.barva, 1.7, 3.8, 1.8)
+  sv.position.set(xLic+NIKA_D*.4, NIKA_NAD-.18, z); g.add(sv)
+  svetla.push({mesh:plat, light:sv, okruh:'NIKY', zakladni:1.1, zakladniInt:1.7})
+
+  klikaci.push({mesh:plat, okruh:'NIKY', nm:'Nika '+(6-i)+' — vnitřní osvětlení (ze zásuvek)'})
+})
+/* Popisky po dvojicích — „první / druhá / třetí nika“, jak o nich Frederik mluví */
+DVOJICE.forEach((dv,i)=>popisek((3-i)+'. NIKA (dvojice)', xLic-.15, NIKA_NAD+.3, dv.stred))
+
+/* ---------- levá strana: styling + zrcadlo ---------- */
+const stylZ = M.styling.v
+const stylD = D - 1.4 - stylZ        // „zrcadlo přes celé“ — celá stěna stylingové části
+const zrcadlo = box(.06, 2.15, stylD, mat.zrcadlo, .12, 1.25, stylZ + stylD/2)
+popisek('ZRCADLO — přes celou stěnu', .9, 2.75, stylZ + stylD - .5)
+const stylZona = new THREE.Mesh(new THREE.PlaneGeometry(2.6, stylD),
+  new THREE.MeshStandardMaterial({color:0x8a7f6d, roughness:.9, transparent:true, opacity:.3}))
+stylZona.rotation.x = -Math.PI/2
+stylZona.position.set(1.45, .02, stylZ + stylD/2)
+root.add(stylZona)
+popisek('STYLING', 1.45, .45, stylZ + .6)
+klikaci.push({mesh:zrcadlo, okruh:'SV34', nm:'Styling — SV3-4'})
+klikaci.push({mesh:stylZona, okruh:'SV34', nm:'Styling — SV3-4'})
+
+/* štendry na levé stěně (styling) */
+for(let i=0;i<3;i++){
+  const z = stylZ + .7 + i*1.4
+  box(.05,.05,1.15, mat.drevo, .45, 1.75, z)
+  box(.05,.9,.05,  mat.drevo, .45, 2.2,  z-.5)
+}
+
+/* ---------- výklenek ---------- */
+/* Výklenek 3.4815 × 2.6179 — rozměry jsou změřené, ale KDE přesně je,
+   z videa nevyčtu. Kreslím ho vlevo vepředu, aby nekolidoval s pokladnou. */
+const vyklX = M.vyklenekB.v, vyklZ = M.vyklenekA.v
+const vykl = new THREE.Mesh(new THREE.PlaneGeometry(vyklX, vyklZ),
+  new THREE.MeshStandardMaterial({color:0xb5a892, roughness:.9, transparent:true, opacity:.45}))
+vykl.rotation.x = -Math.PI/2
+vykl.position.set(vyklX/2 + .15, .03, D - vyklZ/2 - 1.6)
+root.add(vykl)
+popisek('VÝKLENEK  '+M.vyklenekB.v.toFixed(2)+' × '+M.vyklenekA.v.toFixed(2)+'  (poloha ?)',
+  vyklX/2 + .15, .4, D - vyklZ/2 - 1.6)
+
+/* ---------- výlohy: štendry a figuríny (předek, SV3-4) ---------- */
+for(let i=0;i<2;i++){
+  const x = 1.6 + i*1.3
+  box(.05,.05,1.3, mat.drevo, x, 1.7, D-.75)
+  box(.05,.85,.05, mat.drevo, x, 2.15, D-.75)
+}
+const figA = box(.34,1.72,.26, new THREE.MeshStandardMaterial({color:0xd8d2c6,roughness:.85}),
+  4.15, .86, D-.85)
+const figB = box(.34,1.72,.26, new THREE.MeshStandardMaterial({color:0xd8d2c6,roughness:.85}),
+  3.45, .86, D-.85)
+popisek('VÝLOHY · štendry · figuríny · LIELI', 2.6, 2.6, D-.9)
+klikaci.push({mesh:figA, okruh:'SV34', nm:'Předek prodejny — SV3-4'})
+klikaci.push({mesh:figB, okruh:'SV34', nm:'Předek prodejny — SV3-4'})
+
+/* ==========================================================================
+   ZÁZEMÍ ZA PRODEJNOU  (Frederik 04:18 „nyní se dostáváme dozadu za prodejnu“)
+   Leží za zadní stěnou, tj. Z < 0.  Okruh SV5 (kromě kabinek).
+   ========================================================================== */
+const zaz = new THREE.Group(); root.add(zaz)
+const ZH = M.chodbaD.v              // 5.50 m — hloubka zázemí (délka chodby)
+const ZS = S                        // navazuje na šířku prodejny
+
+const zazPod = new THREE.Mesh(new THREE.PlaneGeometry(ZS, ZH),
+  new THREE.MeshStandardMaterial({color:0x8e887d, roughness:.82}))
+zazPod.rotation.x = -Math.PI/2
+zazPod.position.set(ZS/2, 0, -ZH/2)
+zazPod.receiveShadow = true
+zaz.add(zazPod)
+
+box(.12, V, ZH, mat.stena, 0,  V/2, -ZH/2, zaz)
+box(.12, V, ZH, mat.stena, ZS, V/2, -ZH/2, zaz)
+box(ZS,  V, .12, mat.stena, ZS/2, V/2, -ZH, zaz)
+
+/* --------------------------------------------------------------------------
+   Dělení zázemí — 2. video (00:00): „mezi tou chodbou, kde jsou boty, a záchody
+   je stěna rozdělená, a tady je taky stěna ke kabinkám, takže toto je taková
+   chodbička, kde bude ten kávovar.“
+   Zleva doprava:  KABINKY | stěna | CHODBIČKA (kávovar) | WC | stěna | CHODBA S BOTAMI
+   -------------------------------------------------------------------------- */
+const chS   = M.chodbaS.v            // 2.30 — šířka chodby s botami
+const ZED_B = ZS - chS               // stěna mezi chodbou s botami a WC
+const ZED_K = 2.90                   // stěna ke kabinkám
+
+box(.1, V, ZH, mat.stena, ZED_B, V/2, -ZH/2, zaz)   // stěna boty | WC
+box(.1, V, ZH, mat.stena, ZED_K, V/2, -ZH/2, zaz)   // stěna ke kabinkám
+
+/* chodba na prodej bot — 5.50 × 2.30, police na boty */
+const chodba = new THREE.Mesh(new THREE.PlaneGeometry(chS-.1, ZH),
+  new THREE.MeshStandardMaterial({color:0xa39a8b, roughness:.8, transparent:true, opacity:.5}))
+chodba.rotation.x = -Math.PI/2
+chodba.position.set(ZED_B + chS/2, .03, -ZH/2)
+zaz.add(chodba)
+popisek('CHODBA — BOTY  '+M.chodbaD.v.toFixed(2)+' × '+M.chodbaS.v.toFixed(2),
+  ZED_B + chS/2, .45, -ZH/2)
+for(let i=0;i<4;i++){        // police na boty podél obou stěn chodby
+  box(.3,.05,1.6, mat.drevo, ZS-.2,    .55+i*.44, -1.6, zaz)
+  box(.3,.05,1.6, mat.drevo, ZS-.2,    .55+i*.44, -3.8, zaz)
+  box(.3,.05,1.6, mat.drevo, ZED_B+.2, .55+i*.44, -2.7, zaz)
+}
+klikaci.push({mesh:chodba, okruh:'SV5', nm:'Chodba s botami — SV5'})
+
+/* chodbička s kávovarem — mezi stěnou ke kabinkám a WC */
+const chodbicka = new THREE.Mesh(new THREE.PlaneGeometry(1.6, ZH),
+  new THREE.MeshStandardMaterial({color:0x9c9384, roughness:.85, transparent:true, opacity:.4}))
+chodbicka.rotation.x = -Math.PI/2
+chodbicka.position.set(ZED_K + .85, .03, -ZH/2)
+zaz.add(chodbicka)
+popisek('CHODBIČKA (kávovar)', ZED_K + .85, .45, -ZH/2 + 1.1)
+klikaci.push({mesh:chodbicka, okruh:'SV5', nm:'Chodbička s kávovarem — SV5'})
+
+/* 2 kabinky — vlevo od stěny ke kabinkám */
+const kabW=1.15, kabD=1.35, kabH=2.3
+;[0,1].forEach(i=>{
+  const x = .75 + i*(kabW+.25)
+  const k = box(kabW, kabH, kabD, new THREE.MeshStandardMaterial({color:0xb9ae9c,roughness:.8}),
+    x, kabH/2, -1.0, zaz)
+  const zav = new THREE.Mesh(new THREE.PlaneGeometry(kabW-.06, kabH-.15),
+    new THREE.MeshStandardMaterial({color:0x6d5f4e, roughness:.95, side:THREE.DoubleSide}))
+  zav.position.set(x, (kabH-.15)/2, -1.0 + kabD/2 + .02)
+  zaz.add(zav)
+  const sv = new THREE.PointLight(OKRUHY.KABINKY.barva, 1.5, 3.4, 1.8)
+  sv.position.set(x, kabH-.25, -1.0)
+  zaz.add(sv)
+  const zar = new THREE.Mesh(new THREE.BoxGeometry(.3,.04,.3),
+    new THREE.MeshStandardMaterial({color:0xfff4e2, emissive:new THREE.Color(OKRUHY.KABINKY.barva),
+      emissiveIntensity:1.5}))
+  zar.position.set(x, kabH-.06, -1.0); zaz.add(zar)
+  svetla.push({mesh:zar, light:sv, okruh:'KABINKY', zakladni:1.5, zakladniInt:1.5})
+  popisek('KABINKA '+(i+1), x, kabH+.25, -1.0)
+  klikaci.push({mesh:k, okruh:'KABINKY', nm:'Kabinka '+(i+1)+' — řízené, Sonoff'})
+})
+
+/* kuchyňka (technická místnost) · kávovar · WC · server */
+function mistnost(nm, x, z, w, d, okruh, popisY){
+  const m = box(w, V-.05, d, new THREE.MeshStandardMaterial({color:0xd6cfc2, roughness:.92,
+    transparent:true, opacity:.24}), x, (V-.05)/2, z, zaz)
+  popisek(nm, x, (popisY||1.0), z)
+  klikaci.push({mesh:m, okruh, nm:nm+' — '+OKRUHY[okruh].nm})
+  return m
+}
+const midWC = (ZED_K + 1.7 + ZED_B)/2                 // osa pásu mezi chodbičkou a chodbou
+mistnost('KUCHYŇKA / TECH.', midWC, -1.35, ZED_B-ZED_K-1.75, 1.9, 'SV5', 1.15)
+mistnost('WC',               midWC, -4.35, ZED_B-ZED_K-1.75, 2.0, 'SV5', 1.15)
+mistnost('ZÁZEMÍ',           1.5,   -4.25, 2.5,               2.2, 'SV5', 1.15)
+
+/* kávovar — stojí v chodbičce, jak Frederik řekl */
+const kavovar = box(.46,.4,.4, new THREE.MeshStandardMaterial({color:0x3b3b40,roughness:.5}),
+  ZED_K+.85, 1.12, -2.4, zaz)
+box(.85,.9,.55, mat.drevo, ZED_K+.85, .45, -2.4, zaz)
+popisek('kávovar', ZED_K+.85, 1.75, -2.4)
+
+const server = box(.42,.75,.5, new THREE.MeshStandardMaterial({color:0x24242a,roughness:.45,
+  emissive:0x0a3d2a, emissiveIntensity:.5}), 1.5, .4, -3.4, zaz)
+popisek('SERVER', 1.5, 1.05, -3.4)
+
+popisek('průchod do zázemí', PRU_X, PRU_H+.2, 0)
+
+/* ---------- vzduchotechnika a klimatizace (Frederik 03:49) ---------- */
+const matKlima = new THREE.MeshStandardMaterial({color:0xe8e6e0, roughness:.7})
+const matMrizka = new THREE.MeshStandardMaterial({color:0x3a3a40, roughness:.8, metalness:.3})
+;[[S*.55, D*.72],[S*.45, D*.30]].forEach(([x,z],i)=>{
+  box(.86,.22,.86, matKlima, x, V-.11, z)                 // kazetová klimatizace
+  popisek('klimatizace', x, V-.35, z)
+})
+;[[S*.25, D*.85],[S*.72, D*.48],[S*.30, D*.12]].forEach(([x,z])=>{
+  box(.4,.06,.4, matMrizka, x, V-.03, z)                  // mřížky VZT
+})
+popisek('vzduchotechnika', S*.72, V-.3, D*.48)
+
+/* ==========================================================================
+   SVÍTIDLA
+   ========================================================================== */
+function svitidlo(x,z,okruh,typ,parent){
+  const b = OKRUHY[okruh].barva
+  let mesh, light, zi, li
+  if(typ==='tubus'){                       // závěsné tubusové svítidlo
+    mesh = new THREE.Mesh(new THREE.CylinderGeometry(.05,.05,.55,12),
+      new THREE.MeshStandardMaterial({color:0x1c1c20, emissive:new THREE.Color(b),
+        emissiveIntensity:1.3, roughness:.5}))
+    mesh.position.set(x, V-.75, z)
+    const lanko = new THREE.Mesh(new THREE.CylinderGeometry(.004,.004,.45,6),
+      new THREE.MeshStandardMaterial({color:0x2a2a30}))
+    lanko.position.set(x, V-.27, z); (parent||root).add(lanko)
+    light = new THREE.PointLight(b, 3.2, 7.5, 1.7)
+    light.position.set(x, V-1.0, z)
+    zi = 1.3; li = 3.2
+  } else {                                 // zápustná bodovka
+    mesh = new THREE.Mesh(new THREE.CircleGeometry(.1, 16),
+      new THREE.MeshStandardMaterial({color:0xfff6e8, emissive:new THREE.Color(b),
+        emissiveIntensity:1.6, side:THREE.DoubleSide}))
+    mesh.rotation.x = Math.PI/2
+    mesh.position.set(x, V-.02, z)
+    light = new THREE.PointLight(b, 2.4, 7, 1.8)
+    light.position.set(x, V-.15, z)
+    zi = 1.6; li = 2.4
+  }
+  ;(parent||root).add(mesh); (parent||root).add(light)
+  svetla.push({mesh, light, okruh, zakladni:zi, zakladniInt:li})
+  klikaci.push({mesh, okruh, nm:'Svítidlo — '+OKRUHY[okruh].nm})
+  return mesh
+}
+
+/* SV1 — jen nika 1 a nika 2. Frederik (03:20) říká doslova:
+   „Osvětlení na první a na druhé nice je vedeno z jističe SV1.“ */
+svitidlo(xLic-.6, DVOJICE[2].stred, 'SV1','bod')   // nad 1. nikou (dvojicí) — od vstupu
+svitidlo(xLic-.6, DVOJICE[1].stred, 'SV1','bod')   // nad 2. nikou (dvojicí)
+
+/* NEURČENO — Frederik tahle světla ukázal, ale okruh u nich neřekl:
+   03:05 „Tohle je osvětlení nad pokladnou“ · 03:16 „Osvětlení na třetí nice“ */
+svitidlo(pultX, pultZ+.7, 'NEURCENO','tubus')
+svitidlo(pultX, pultZ-.7, 'NEURCENO','tubus')
+svitidlo(xLic-.6, DVOJICE[0].stred, 'NEURCENO','bod')  // nad 3. nikou (dvojicí)
+
+/* Ambient — „tohle boční, tedy této prostřední světla, jsou na jističi SV1“
+   (04:40–04:49). Střední pruh hlavního prostoru, směrem dozadu ke kabinkám. */
+const xStred = (PRED_LIC-VYSTUP)/2
+svitidlo(xStred, 1.5, 'AMBIENT','bod')
+svitidlo(xStred, 3.2, 'AMBIENT','bod')
+svitidlo(xStred, 4.9, 'AMBIENT','bod')
+svitidlo(xStred, 6.6, 'AMBIENT','bod')
+
+/* SV3-4 — styling + předek prodejny (03:44–04:17) */
+svitidlo(1.5, stylZ+1.0, 'SV34','bod')
+svitidlo(1.5, stylZ+2.6, 'SV34','bod')
+svitidlo(1.5, stylZ+4.0, 'SV34','bod')
+svitidlo(1.3, D-1.2, 'SV34','bod')          // předek prodejny — výlohy, štendry, figuríny
+svitidlo(2.7, D-1.2, 'SV34','bod')
+svitidlo(4.1, D-1.2, 'SV34','bod')
+svitidlo(xStred, D-3.2, 'SV34','tubus')
+
+/* SV5 — zázemí, chodba, kuchyňka, WC (05:43–05:50) */
+svitidlo(ZED_B + chS/2, -1.5, 'SV5','bod', zaz)     // chodba s botami
+svitidlo(ZED_B + chS/2, -4.0, 'SV5','bod', zaz)
+svitidlo(ZED_K + .85,   -2.7, 'SV5','bod', zaz)     // chodbička s kávovarem
+svitidlo(midWC, -1.35, 'SV5','bod', zaz)            // kuchyňka / technická
+svitidlo(midWC, -4.35, 'SV5','bod', zaz)            // WC
+svitidlo(1.5,   -4.25, 'SV5','bod', zaz)            // zázemí
+
+/* ==========================================================================
+   PŘEPÍNÁNÍ OKRUHŮ
+   ========================================================================== */
+function prepni(key, stav){
+  const o = OKRUHY[key]
+  o.on = (stav===undefined) ? !o.on : stav
+  svetla.filter(s=>s.okruh===key).forEach(s=>{
+    s.light.intensity = o.on ? s.zakladniInt : 0
+    s.mesh.material.emissiveIntensity = o.on ? s.zakladni : .04
+  })
+  vykresliPanel()
+  sonoff(key, o.on)          // ← hook na reálné spínání
+}
+
+/* --------------------------------------------------------------------------
+   SONOFF — nachystáno, zatím jen loguje.
+   Frederik (06:25): „Zatím máme Sonoff 2 připojený. Ale ať je to tam nachystaný.“
+   Až budou zařízení nasazená, doplň sem volání (eWeLink / Home Assistant /
+   vlastní endpoint).  NIC se neodešle, dokud SONOFF.aktivni = false.
+   -------------------------------------------------------------------------- */
+const SONOFF = {
+  aktivni: false,                       // ← přepnout na true, až bude endpoint hotový
+  endpoint: '',                         // např. 'http://homeassistant.local:8123/api/services/switch/turn_on'
+  token: '',
+  mapovani: {                           // okruh → ID zařízení
+    SV1:     '',
+    AMBIENT: '',
+    SV34:    '',
+    SV5:      '',
+    NIKY:     '',
+    KABINKY:  '',                       // „ten už máme zaregistrovaný“ — ID doplň z eWeLink
+    NEURCENO: '',
+  },
+}
+async function sonoff(okruh, zapnout){
+  const id = SONOFF.mapovani[okruh]
+  console.log(`[okruh] ${okruh} → ${zapnout?'ZAP':'VYP'}${id?' (dev '+id+')':''}`)
+  if(!SONOFF.aktivni || !id || !SONOFF.endpoint) return
+  try{
+    await fetch(SONOFF.endpoint, {
+      method:'POST',
+      headers:{'Content-Type':'application/json',
+               ...(SONOFF.token?{'Authorization':'Bearer '+SONOFF.token}:{})},
+      body: JSON.stringify({deviceid:id, params:{switch: zapnout?'on':'off'}}),
+    })
+  }catch(e){ console.warn('Sonoff nedostupný:', e.message) }
+}
+
+/* ---------- panel ---------- */
+const elOkruhy = document.getElementById('okruhy')
+function vykresliPanel(){
+  elOkruhy.innerHTML = ''
+  Object.entries(OKRUHY).forEach(([k,o])=>{
+    const d = document.createElement('div')
+    d.className = 'okruh'+(o.on?' on':'')
+    d.style.color = '#'+o.barva.toString(16).padStart(6,'0')
+    d.innerHTML = `<div class="dot"></div>
+      <div class="nm">${o.nm}<div class="ds">${o.ds}</div></div>
+      <div class="sw">${o.on?'ZAP':'VYP'}</div>`
+    d.onclick = ()=>prepni(k)
+    elOkruhy.appendChild(d)
+  })
+}
+vykresliPanel()
+
+document.getElementById('vse-on').onclick  = ()=>Object.keys(OKRUHY).forEach(k=>prepni(k,true))
+document.getElementById('vse-off').onclick = ()=>Object.keys(OKRUHY).forEach(k=>prepni(k,false))
+
+/* míry */
+const elMiry = document.getElementById('miry')
+Object.values(M).forEach(m=>{
+  const r = document.createElement('div')
+  r.className = 'mr'+((m.odhad||m.nejasne)?' odhad':'')
+  const zn = m.odhad ? ' ?' : (m.nejasne ? ' ⚑' : (m.receno ? ' ~' : ''))
+  r.innerHTML = `<span>${m.p}</span><b>${m.v.toFixed(4).replace(/0+$/,'').replace(/\.$/,'')}${zn}</b>`
+  elMiry.appendChild(r)
+})
+document.getElementById('warn').innerHTML =
+  '<b>?</b> = nezměřeno, jen odhad (světlá výška, rozměry výklenků nik).<br>'+
+  '<b>~</b> = řekl jsi to nahlas, laser to neměřil (zaokrouhlené).<br>'+
+  '<b>⚑</b> = naměřeno, ale <b>nevím, k čemu to patří</b>. Když jsi říkal „niky jsou vzdáleny '+
+  'od pravé strany tolik“, nevidím, od čeho se měří — niky jsou přece v té pravé zdi. '+
+  'Tyhle dvě čísla proto zatím nejsou v geometrii použitá.<br>'+
+  'Odečet <b>5.4091</b> jsem zahodil — říkáš u něj „Toto je, promiň“ a hned měříš znovu.'
+
+/* pohledy */
+document.querySelectorAll('[data-view]').forEach(b=>{
+  b.onclick = ()=>{
+    const v = b.dataset.view
+    // hlavní prostor je VLEVO od předstěny s nikami — kamera patří do něj
+    const xChodba = (PRED_LIC-VYSTUP)/2
+    if(v==='pudorys'){ camera.position.set(S/2, 26, D/2+.01); controls.target.set(S/2,0,D/2-1.5) }
+    if(v==='perspektiva'){ camera.position.set(S/2-9, 11, D+11); controls.target.set(S/2,1.2,D/2) }
+    if(v==='vstup'){ camera.position.set(xChodba, 1.65, D-1.4); controls.target.set(xChodba+1.2,1.5,1.5) }
+  }
+})
+
+/* strop / popisky */
+let stropVid=false
+document.getElementById('t-strop').onclick = e=>{
+  stropVid=!stropVid; strop.visible=stropVid
+  e.target.textContent = 'Strop: '+(stropVid?'zobrazený':'skrytý')
+}
+let popVid=true
+document.getElementById('t-popisky').onclick = e=>{
+  popVid=!popVid; popisky.forEach(p=>p.visible=popVid)
+  e.target.textContent = 'Popisky: '+(popVid?'zapnuté':'vypnuté')
+}
+
+/* ---------- klikání do scény ---------- */
+const ray = new THREE.Raycaster(), mys = new THREE.Vector2()
+const tip = document.getElementById('tip')
+/* Paprsek musí narazit i do stěn, jinak by klik skrz zadní stěnu přepínal
+   okruh v zázemí za ní. Bereme první pevný zásah a ten musí být klikací. */
+function zasah(ev){
+  mys.x = (ev.clientX/innerWidth)*2-1
+  mys.y = -(ev.clientY/innerHeight)*2+1
+  ray.setFromCamera(mys, camera)
+  const hits = ray.intersectObject(root, true)
+  for(const h of hits){
+    const o = h.object
+    if(!o.isMesh || !o.visible) continue
+    const k = klikaci.find(k=>k.mesh===o)
+    if(k) return k
+    const m = o.material
+    if(m && m.transparent && m.opacity < .5) continue   // závoje a zóny nezacláněj
+    return null                                          // narazili jsme do pevné geometrie
+  }
+  return null
+}
+renderer.domElement.addEventListener('pointermove', ev=>{
+  const k = zasah(ev)
+  if(k){
+    tip.textContent = k.nm
+    tip.style.left = (ev.clientX+14)+'px'
+    tip.style.top  = (ev.clientY+14)+'px'
+    tip.style.opacity = 1
+    renderer.domElement.style.cursor = 'pointer'
+  }else{
+    tip.style.opacity = 0
+    renderer.domElement.style.cursor = 'default'
+  }
+})
+/* Klik se musí odlišit od orbitování: bereme ho jen tehdy, když se ukazatel
+   mezi stiskem a puštěním prakticky nepohnul. Jinak každé otočení scénou
+   náhodně přepínalo okruh. */
+let dx0=0, dy0=0
+renderer.domElement.addEventListener('pointerdown', ev=>{ dx0=ev.clientX; dy0=ev.clientY })
+renderer.domElement.addEventListener('pointerup', ev=>{
+  if(Math.hypot(ev.clientX-dx0, ev.clientY-dy0) > 5) return   // táhnutí = otáčení, ne klik
+  const k = zasah(ev)
+  if(k) prepni(k.okruh)
+})
+
+/* ---------- běh ---------- */
+addEventListener('resize', ()=>{
+  camera.aspect = innerWidth/innerHeight
+  camera.updateProjectionMatrix()
+  renderer.setSize(innerWidth,innerHeight)
+  labelRenderer.setSize(innerWidth,innerHeight)
+})
+;(function smycka(){
+  requestAnimationFrame(smycka)
+  controls.update()
+  renderer.render(scene,camera)
+  labelRenderer.render(scene,camera)
+})()
+
+console.log('%cAmande — 3D mapa prodejny','color:#c9a227;font-weight:bold')
+console.log('Okruhy: '+Object.keys(OKRUHY).join(', '))
+console.log('prepni("SV1", true/false) — ruční ovládání z konzole')
+window.prepni = prepni; window.OKRUHY = OKRUHY; window.SONOFF = SONOFF
+</script>
+</body>
+</html>
