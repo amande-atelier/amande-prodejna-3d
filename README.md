@@ -36,6 +36,16 @@ Okruh se drží na svítidle v poli `o`. Zhasnutí řeší jediné místo — `a
 `SONOFF` objekt je nachystaný na reálné spínání, ale `aktivni:false` — dokud se nedoplní
 endpoint a ID zařízení, nic se neodesílá, jen se loguje do konzole.
 
+## Klimatizace
+Tlačítko **❄ Klimatizace** ve spodní liště (`index.html`) a sekce **Klimatizace** v panelu `mapa.html`
+jsou jen odkaz do adminu prodejny: https://admin.amande.store/prodejna?sekce=klima (otevře se v novém okně).
+Ovládání klimatizace (Daikin) je v adminu prodejny — tady se nic neodesílá, nic se nečte a nic se neukládá.
+
+## Bezpečnost
+Repo je **veřejné** (GitHub Pages). Nepatří sem žádné tokeny, klíče, hesla, webhooky ani privátní endpointy
+(ani do `SONOFF` objektů). Skutečné ovládání prodejny (světla, klimatizace) jde jen přes admin
+za přihlášením, ne z této stránky.
+
 ## Technika — DŮLEŽITÉ pro další AI úpravy
 `index.html` je **jeden samostatný soubor** — HTML + CSS + celý JS inline v `<script type="module">`.
 Loader částí ani `VER` už neexistují: složky `parts/p1..p3` v repu sice zůstaly, ale **nikdo je nenačítá**
